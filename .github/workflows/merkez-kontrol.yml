@@ -1,0 +1,11 @@
+name: Merkez kontrol
+on: workflow_dispatch
+jobs:
+  kontrol:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Portlar
+        run: |
+          H=desk.tunayalcin.blog
+          dig +short "$H"
+          for p in 21115 21116 21117 21118 21119; do nc -vz -w 5 "$H" "$p"; done
