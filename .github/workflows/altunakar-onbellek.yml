@@ -1,0 +1,35 @@
+name: Onbellek isit
+
+# GitHub bir etiketin onbellegini baska etikete vermez; etiket (surum) derlemeleri yalniz kendi etiketinin ve
+# varsayilan dalin (altunakar) onbellegini okuyabilir. Bu is akisi altunakar dalinda HICBIR SEY YAYINLAMADAN
+# derler ve Rust/vcpkg/kopru onbellegini oraya yazar; etiket derlemeleri onu yalniz okur (derleme_duzenle.py).
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - altunakar
+    paths:
+      - "Cargo.lock"
+      - "vcpkg.json"
+      - "res/vcpkg/**"
+      - "res/vcpkg-triplets/**"
+      - ".github/workflows/flutter-build.yml"
+      - ".github/workflows/bridge.yml"
+      - ".github/workflows/altunakar-onbellek.yml"
+  schedule:
+    # GitHub 7 gun kullanilmayan onbellegi siler; surum cikmayan haftalarda da canli kalsin
+    - cron: "17 3 * * 1,4"
+
+concurrency:
+  group: onbellek-isit
+  cancel-in-progress: true
+
+jobs:
+  isit:
+    permissions:
+      contents: write  # flutter-build.yml'deki generate-sbom isi ister; upload-artifact false iken yayin yok
+    uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
+    with:
+      upload-artifact: false
+      upload-tag: isitma

@@ -60,6 +60,7 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           prefix-key: bridge-${{ matrix.job.os }}
+          save-if: ${{ github.ref_type == 'branch' }}
 
       - name: Cache Bridge
         id: cache-bridge

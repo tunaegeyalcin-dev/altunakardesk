@@ -233,6 +233,7 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           prefix-key: ${{ matrix.job.os }}
+          save-if: ${{ github.ref_type == 'branch' }}
 
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
@@ -241,8 +242,25 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
+      - name: Restore vcpkg binary cache
+        id: vcpkg-geri
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ runner.temp }}/vcpkg-ikili
+          key: vcpkg-${{ matrix.job.os }}-${{ matrix.job.vcpkg-triplet }}-${{ env.VCPKG_COMMIT_ID }}-${{ github.run_id }}
+          restore-keys: vcpkg-${{ matrix.job.os }}-${{ matrix.job.vcpkg-triplet }}-${{ env.VCPKG_COMMIT_ID }}-
+
+      - name: Count vcpkg binary cache
+        id: vcpkg-once
+        shell: bash
+        run: |
+          d="${RUNNER_TEMP//\\//}/vcpkg-ikili"
+          mkdir -p "$d"
+          echo "sayi=$(find "$d" -name '*.zip' | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
       - name: Install vcpkg dependencies
         env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}/vcpkg-ikili,readwrite
           VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
         run: |
           if ! $VCPKG_ROOT/vcpkg \
@@ -260,6 +278,32 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
         shell: bash
+
+      - name: Prepare vcpkg binary cache
+        id: vcpkg-ayikla
+        if: ${{ github.ref_type == 'branch' }}
+        shell: bash
+        run: |
+          d="${RUNNER_TEMP//\\//}/vcpkg-ikili"
+          once=${{ steps.vcpkg-once.outputs.sayi }}
+          sonra=$(find "$d" -name '*.zip' | wc -l | tr -d ' ')
+          echo "vcpkg ikili onbellek: once $once, sonra $sonra paket"
+          [ "$sonra" -gt "$once" ] || exit 0
+          tr -d '\r' < "$VCPKG_ROOT/installed/vcpkg/status" | sed -n 's/^Abi: //p' | sort -u > "$d.abi"
+          if [ -s "$d.abi" ]; then
+            find "$d" -name '*.zip' | while read -r z; do
+              grep -qxF "$(basename "$z" .zip)" "$d.abi" || rm -f "$z"
+            done
+          fi
+          echo "kaldi $(find "$d" -name '*.zip' | wc -l | tr -d ' ') paket"
+          echo kaydet=true >> "$GITHUB_OUTPUT"
+
+      - name: Save vcpkg binary cache
+        if: steps.vcpkg-ayikla.outputs.kaydet == 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ runner.temp }}/vcpkg-ikili
+          key: ${{ steps.vcpkg-geri.outputs.cache-primary-key }}
 
       - name: Set SODIUM_LIB_DIR (arm64)
         # libsodium-sys ships no arm64 Windows prebuilt lib; point it at the vcpkg-built one
@@ -858,6 +902,7 @@ jobs:
         with:
           prefix-key: ${{ matrix.job.os }}
           key: ${{ matrix.job.target }}
+          save-if: ${{ github.ref_type == 'branch' }}
 
       - name: Restore bridge files
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -876,8 +921,25 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
+      - name: Restore vcpkg binary cache
+        id: vcpkg-geri
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ runner.temp }}/vcpkg-ikili
+          key: vcpkg-${{ matrix.job.os }}-${{ matrix.job.vcpkg-triplet }}-${{ env.VCPKG_COMMIT_ID }}-${{ github.run_id }}
+          restore-keys: vcpkg-${{ matrix.job.os }}-${{ matrix.job.vcpkg-triplet }}-${{ env.VCPKG_COMMIT_ID }}-
+
+      - name: Count vcpkg binary cache
+        id: vcpkg-once
+        shell: bash
+        run: |
+          d="${RUNNER_TEMP//\\//}/vcpkg-ikili"
+          mkdir -p "$d"
+          echo "sayi=$(find "$d" -name '*.zip' | wc -l | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
       - name: Install vcpkg dependencies
         env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}/vcpkg-ikili,readwrite
           VCPKG_DEFAULT_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
           VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
         run: |
@@ -894,6 +956,32 @@ jobs:
             exit 1
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
+
+      - name: Prepare vcpkg binary cache
+        id: vcpkg-ayikla
+        if: ${{ github.ref_type == 'branch' }}
+        shell: bash
+        run: |
+          d="${RUNNER_TEMP//\\//}/vcpkg-ikili"
+          once=${{ steps.vcpkg-once.outputs.sayi }}
+          sonra=$(find "$d" -name '*.zip' | wc -l | tr -d ' ')
+          echo "vcpkg ikili onbellek: once $once, sonra $sonra paket"
+          [ "$sonra" -gt "$once" ] || exit 0
+          tr -d '\r' < "$VCPKG_ROOT/installed/vcpkg/status" | sed -n 's/^Abi: //p' | sort -u > "$d.abi"
+          if [ -s "$d.abi" ]; then
+            find "$d" -name '*.zip' | while read -r z; do
+              grep -qxF "$(basename "$z" .zip)" "$d.abi" || rm -f "$z"
+            done
+          fi
+          echo "kaldi $(find "$d" -name '*.zip' | wc -l | tr -d ' ') paket"
+          echo kaydet=true >> "$GITHUB_OUTPUT"
+
+      - name: Save vcpkg binary cache
+        if: steps.vcpkg-ayikla.outputs.kaydet == 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ runner.temp }}/vcpkg-ikili
+          key: ${{ steps.vcpkg-geri.outputs.cache-primary-key }}
 
       - name: Show version information (Rust, cargo, Clang)
         shell: bash

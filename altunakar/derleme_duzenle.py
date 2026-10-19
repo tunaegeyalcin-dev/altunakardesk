@@ -179,17 +179,92 @@ iste_degistir(M, "          brew install llvm create-dmg\n",
               "            arch -x86_64 /usr/bin/true\n"
               "          fi\n")
 # ffmpeg vcpkg.json'da yalniz "host" bagimliligi: hedef ve host uclusu ayni (x64-osx) olmazsa Intel pakete girmez
-iste_degistir(M, "      - name: Install vcpkg dependencies\n        run: |\n",
-              "      - name: Install vcpkg dependencies\n"
-              "        env:\n"
-              "          VCPKG_DEFAULT_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n"
-              "          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n"
-              "        run: |\n")
+# (asagida env'e VCPKG_BINARY_SOURCES de eklenir; tekrar calismada bu yuzden satirin varligina bakilir)
+if "          VCPKG_DEFAULT_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n" not in s[slice(*is_araligi(M))]:
+    iste_degistir(M, "      - name: Install vcpkg dependencies\n        run: |\n",
+                  "      - name: Install vcpkg dependencies\n"
+                  "        env:\n"
+                  "          VCPKG_DEFAULT_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n"
+                  "          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n"
+                  "        run: |\n")
 iste_degistir(M, "      - name: Build rustdesk\n        run: |\n",
               "      - name: Build rustdesk\n        run: |\n"
               "          if [ \"$(uname -m)\" = arm64 ] && [ \"${{ matrix.job.arch }}\" = x86_64 ]; then\n"
               "            export CARGO_BUILD_TARGET=x86_64-apple-darwin  # build.py ciktiyi target/release'e alir\n"
               "          fi\n")
+
+# Onbellek (10-19): GitHub bir etiketin onbellegini baska etikete vermez, yalniz ayni ref ve varsayilan dal
+# okunur. Onbellegi altunakar dalinda 'Onbellek isit' (altunakar-onbellek.yml) yazar; etiket derlemeleri
+# yalniz okur, kaydetmez (yoksa etiket kapsaminda 2 GB'lik kayitlar 10 GB siniri doldurur).
+KAYDET = "${{ github.ref_type == 'branch' }}"
+iste_degistir(W, "          prefix-key: ${{ matrix.job.os }}\n",
+              "          prefix-key: ${{ matrix.job.os }}\n          save-if: " + KAYDET + "\n")
+iste_degistir(M, "          key: ${{ matrix.job.target }}\n",
+              "          key: ${{ matrix.job.target }}\n          save-if: " + KAYDET + "\n")
+dosya_degistir(".github/workflows/bridge.yml", "          prefix-key: bridge-${{ matrix.job.os }}\n",
+               "          prefix-key: bridge-${{ matrix.job.os }}\n          save-if: " + KAYDET + "\n")
+
+# vcpkg 'x-gha' ikili onbellegi vcpkg'den kaldirildi (ffmpeg/aom/libvpx her iste kaynaktan derleniyordu):
+# 'files' saglayici + actions/cache. Yalniz yeni paket derlendiyse ve dal kosusundaysa kaydedilir; kayittan once
+# bu derlemede kullanilmayan paketler silinir (eskiler birikmesin).
+ONBELLEK = "actions/cache/{}@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0"
+VCPKG_DIZIN = "${{ runner.temp }}/vcpkg-ikili"
+VCPKG_ONCE = (
+    "      - name: Restore vcpkg binary cache\n"
+    "        id: vcpkg-geri\n"
+    "        uses: " + ONBELLEK.format("restore") + "\n"
+    "        with:\n"
+    "          path: " + VCPKG_DIZIN + "\n"
+    "          key: vcpkg-${{ matrix.job.os }}-${{ matrix.job.vcpkg-triplet }}-${{ env.VCPKG_COMMIT_ID }}-${{ github.run_id }}\n"
+    "          restore-keys: vcpkg-${{ matrix.job.os }}-${{ matrix.job.vcpkg-triplet }}-${{ env.VCPKG_COMMIT_ID }}-\n"
+    "\n"
+    "      - name: Count vcpkg binary cache\n"
+    "        id: vcpkg-once\n"
+    "        shell: bash\n"
+    "        run: |\n"
+    "          d=\"${RUNNER_TEMP//\\\\//}/vcpkg-ikili\"\n"
+    "          mkdir -p \"$d\"\n"
+    "          echo \"sayi=$(find \"$d\" -name '*.zip' | wc -l | tr -d ' ')\" >> \"$GITHUB_OUTPUT\"\n"
+    "\n")
+VCPKG_SONRA = (
+    "      - name: Prepare vcpkg binary cache\n"
+    "        id: vcpkg-ayikla\n"
+    "        if: " + KAYDET + "\n"
+    "        shell: bash\n"
+    "        run: |\n"
+    "          d=\"${RUNNER_TEMP//\\\\//}/vcpkg-ikili\"\n"
+    "          once=${{ steps.vcpkg-once.outputs.sayi }}\n"
+    "          sonra=$(find \"$d\" -name '*.zip' | wc -l | tr -d ' ')\n"
+    "          echo \"vcpkg ikili onbellek: once $once, sonra $sonra paket\"\n"
+    "          [ \"$sonra\" -gt \"$once\" ] || exit 0\n"
+    "          tr -d '\\r' < \"$VCPKG_ROOT/installed/vcpkg/status\" | sed -n 's/^Abi: //p' | sort -u > \"$d.abi\"\n"
+    "          if [ -s \"$d.abi\" ]; then\n"
+    "            find \"$d\" -name '*.zip' | while read -r z; do\n"
+    "              grep -qxF \"$(basename \"$z\" .zip)\" \"$d.abi\" || rm -f \"$z\"\n"
+    "            done\n"
+    "          fi\n"
+    "          echo \"kaldi $(find \"$d\" -name '*.zip' | wc -l | tr -d ' ') paket\"\n"
+    "          echo kaydet=true >> \"$GITHUB_OUTPUT\"\n"
+    "\n"
+    "      - name: Save vcpkg binary cache\n"
+    "        if: steps.vcpkg-ayikla.outputs.kaydet == 'true'\n"
+    "        uses: " + ONBELLEK.format("save") + "\n"
+    "        with:\n"
+    "          path: " + VCPKG_DIZIN + "\n"
+    "          key: ${{ steps.vcpkg-geri.outputs.cache-primary-key }}\n"
+    "\n")
+KURULUM = "      - name: Install vcpkg dependencies\n"
+for ad in (W, M):
+    iste_degistir(ad, KURULUM + "        env:\n",
+                  KURULUM + "        env:\n"
+                  "          VCPKG_BINARY_SOURCES: clear;files," + VCPKG_DIZIN + ",readwrite\n")
+    a, b = is_araligi(ad)
+    govde = s[a:b]
+    if "      - name: Restore vcpkg binary cache\n" not in govde:
+        i = govde.index(KURULUM)
+        j = i + re.search(r"^      - ", govde[i + 1:], re.M).start() + 1
+        govde = govde[:i] + VCPKG_ONCE + govde[i:j] + VCPKG_SONRA + govde[j:]
+        s = s[:a] + govde + s[b:]
 
 YML.write_text(s, encoding="utf-8")
 print("derleme duzeni hazir")
