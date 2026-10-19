@@ -927,6 +927,8 @@ jobs:
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
+          codesign --force --deep --sign - ./flutter/build/macos/Build/Products/Release/AltunakarDesk.app
+          codesign --verify --deep --strict ./flutter/build/macos/Build/Products/Release/AltunakarDesk.app
           create-dmg --icon "AltunakarDesk.app" 200 190 --hide-extension "AltunakarDesk.app" --window-size 800 400 --app-drop-link 600 185 AltunakarDesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg ./flutter/build/macos/Build/Products/Release/AltunakarDesk.app
 
       - name: Upload unsigned macOS app

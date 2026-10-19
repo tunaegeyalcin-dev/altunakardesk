@@ -91,6 +91,13 @@ iste_degistir(M, "RustDesk.app", f"{AD}.app")
 iste_degistir(M, "rustdesk-${{ env.VERSION }}", f"{AD}-${{{{ env.VERSION }}}}")
 iste_degistir(M, "rustdesk*??.dmg", f"{AD}*??.dmg")
 iste_degistir(M, "rustdesk*-${{ matrix.job.arch }}.dmg", f"{AD}*-${{{{ matrix.job.arch }}}}.dmg")
+# Imza kimligi yoksa paket ad-hoc ve BUTUNUYLE imzalanir: aksi halde ana dosya ad-hoc, FlutterMacOS
+# Google imzali kalir ve macOS "farkli Team ID" diyerek acilista durdurur (1.5.0-3'te goruldu).
+DMG_SATIRI = ('          create-dmg --icon "AltunakarDesk.app" 200 190 --hide-extension "AltunakarDesk.app" '
+              '--window-size 800 400 --app-drop-link 600 185 AltunakarDesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg')
+iste_degistir(M, DMG_SATIRI,
+              "          codesign --force --deep --sign - ./flutter/build/macos/Build/Products/Release/AltunakarDesk.app\n"
+              "          codesign --verify --deep --strict ./flutter/build/macos/Build/Products/Release/AltunakarDesk.app\n" + DMG_SATIRI)
 # imzasiz dmg zaten mimari ekiyle uretilir; yeniden adlandirma dongusu eki ikilemesin
 iste_degistir(M, "for name in AltunakarDesk*??.dmg; do\n",
               "for name in AltunakarDesk*??.dmg; do\n              case \"$name\" in *-${{ matrix.job.arch }}.dmg) continue ;; esac\n")
