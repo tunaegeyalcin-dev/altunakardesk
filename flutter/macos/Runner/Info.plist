@@ -29,7 +29,7 @@
 			<string>com.altunakar.desk</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>rustdesk</string>
+				<string>altunakardesk</string>
 			</array>
 		</dict>
 	</array>

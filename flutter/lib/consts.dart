@@ -351,6 +351,8 @@ extension StringExtension on String {
 
 const Size kConnectionManagerWindowSizeClosedChat = Size(360, 600); // Altunakar: yazili izinler
 const Size kConnectionManagerWindowSizeOpenChat = Size(760, 600);
+// Altunakar: ana pencere bundan kucuk olursa sekmeler ve "Bu bilgisayar" karti sigmaz.
+const Size kAltunakarAnaPencereEnKucuk = Size(860, 600);
 // Tabbar transition duration, now we remove the duration
 const Duration kTabTransitionDuration = Duration.zero;
 const double kEmptyMarginTop = 50;

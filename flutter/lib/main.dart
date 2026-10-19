@@ -410,6 +410,10 @@ WindowOptions getHiddenTitleBarWindowOptions(
   }
   return WindowOptions(
     size: size,
+    // Altunakar: ana pencere asiri daraltilinca icerik tasmasin.
+    minimumSize: isMainWindow && !bind.isIncomingOnly()
+        ? kAltunakarAnaPencereEnKucuk
+        : null,
     center: center,
     backgroundColor: (isMacOS && isMainWindow) ? null : Colors.transparent,
     skipTaskbar: false,

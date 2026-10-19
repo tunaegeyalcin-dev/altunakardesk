@@ -141,7 +141,8 @@ class _PeerTabPageState extends State<PeerTabPage>
         buildDefaultDragHandles: false,
         onReorder: model.reorder,
         scrollDirection: Axis.horizontal,
-        physics: NeverScrollableScrollPhysics(),
+        // Altunakar: sigmayan sekme gizlice kesilmesin, kaydirilabilsin.
+        physics: const ClampingScrollPhysics(),
         children: model.visibleEnabledOrderedIndexs.map((t) {
           final selected = model.currentTab == t;
           final color = selected

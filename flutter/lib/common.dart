@@ -2094,7 +2094,13 @@ Future<bool> restoreWindowPosition(WindowType type,
     }
   }
 
-  final size = await _adjustRestoreMainWindowSize(lpos.width, lpos.height);
+  var size = await _adjustRestoreMainWindowSize(lpos.width, lpos.height);
+  // Altunakar: eski surumden kalan dar ana pencere en kucuk boyuta buyutulur
+  // (macOS'ta en kucuk boyut programla verilen boyutu kendiliginden buyutmez).
+  if (type == WindowType.Main && !bind.isIncomingOnly()) {
+    size = Size(max(size.width, kAltunakarAnaPencereEnKucuk.width),
+        max(size.height, kAltunakarAnaPencereEnKucuk.height));
+  }
   final offsetLeftTop = await _adjustRestoreMainWindowOffset(
     lpos.offsetWidth,
     lpos.offsetHeight,
@@ -3027,14 +3033,15 @@ String getWindowName({WindowType? overrideType}) {
   switch (overrideType ?? kWindowType) {
     case WindowType.Main:
       return name;
+    // Altunakar: pencere basliklari da cevrilir.
     case WindowType.FileTransfer:
-      return "File Transfer - $name";
+      return "${translate('File Transfer')} - $name";
     case WindowType.ViewCamera:
-      return "View Camera - $name";
+      return "${translate('View Camera')} - $name";
     case WindowType.PortForward:
-      return "Port Forward - $name";
+      return "${translate('Port Forward')} - $name";
     case WindowType.RemoteDesktop:
-      return "Remote Desktop - $name";
+      return "${translate('Remote Desktop')} - $name";
     default:
       break;
   }

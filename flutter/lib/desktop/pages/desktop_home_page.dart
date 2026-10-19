@@ -212,72 +212,91 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       Widget etiket(String t) => Text(t,
               style: const TextStyle(fontSize: 12.5, color: _soluk))
           .marginOnly(bottom: 4);
+      final numara = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          etiket('Bu bilgisayarın numarası'),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: model.serverId,
+              builder: (_, v, __) => SelectableText(v.text,
+                  style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.6)),
+            ),
+            const SizedBox(width: 12),
+            _altunakarKucukDugme(context, 'Kopyala', () {
+              Clipboard.setData(
+                  ClipboardData(text: model.serverId.text.replaceAll(' ', '')));
+              showToast(translate('Copied'));
+            }),
+          ]),
+        ],
+      );
+      final sifre = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          etiket(translate('One-time Password')),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: model.serverPasswd,
+              builder: (_, v, __) => SelectableText(
+                  showOneTime ? v.text : '••••••',
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2.4)),
+            ),
+            const SizedBox(width: 12),
+            if (showOneTime)
+              _altunakarKucukDugme(context, 'Yenile',
+                  () => bind.mainUpdateTemporaryPassword()),
+          ]),
+        ],
+      );
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           border: Border.all(color: _cizgi),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Column(
+        // Dar pencerede numara ve sifre alt alta; genis pencerede yan yana, cok
+        // genis pencerede yanlarinda kisa aciklama.
+        child: LayoutBuilder(builder: (context, c) {
+          if (c.maxWidth < 540) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                etiket('Bu bilgisayarın numarası'),
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: model.serverId,
-                    builder: (_, v, __) => SelectableText(v.text,
-                        style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.6)),
-                  ),
-                  const SizedBox(width: 12),
-                  _altunakarKucukDugme(context, 'Kopyala', () {
-                    Clipboard.setData(
-                        ClipboardData(text: model.serverId.text.replaceAll(' ', '')));
-                    showToast(translate('Copied'));
-                  }),
-                ]),
+                numara,
+                Container(height: 1, color: _cizgi)
+                    .marginSymmetric(vertical: 12),
+                sifre,
               ],
-            ),
-            Container(width: 1, height: 48, color: _cizgi)
-                .marginSymmetric(horizontal: 26),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                etiket(translate('One-time Password')),
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: model.serverPasswd,
-                    builder: (_, v, __) => SelectableText(
-                        showOneTime ? v.text : '••••••',
-                        style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 2.4)),
-                  ),
-                  const SizedBox(width: 12),
-                  if (showOneTime)
-                    _altunakarKucukDugme(context, 'Yenile',
-                        () => bind.mainUpdateTemporaryPassword()),
-                ]),
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              numara,
+              Container(width: 1, height: 48, color: _cizgi)
+                  .marginSymmetric(horizontal: 26),
+              sifre,
+              if (c.maxWidth >= 760) ...[
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Text(translate('desk_tip'),
+                      textAlign: TextAlign.end,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12.5, color: _soluk)),
+                ),
               ],
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Text(translate('desk_tip'),
-                  textAlign: TextAlign.end,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5, color: _soluk)),
-            ),
-          ],
-        ),
+            ],
+          );
+        }),
       );
     });
   }
@@ -844,10 +863,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
     // Altunakar: pembe degrade kart yerine sade, acik sari uyari seridi.
     if (!bind.isIncomingOnly()) {
-      final yazi = [
-        if (title.isNotEmpty) translate(title),
-        if (content.isNotEmpty) translate(content),
-      ].join(' ');
       return Container(
         margin: const EdgeInsets.only(top: 18),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -857,15 +872,31 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [
+          // Baslik kalin ve ayri satirda; aciklama altinda.
           Expanded(
-            child: Text(yazi,
-                style: const TextStyle(
-                    fontSize: 13, height: 1.4, color: Color(0xFF141A22))),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (title.isNotEmpty)
+                  Text(translate(title),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF141A22))),
+                if (content.isNotEmpty)
+                  Text(translate(content),
+                      style: const TextStyle(
+                          fontSize: 13, height: 1.4, color: Color(0xFF141A22))),
+              ],
+            ),
           ),
           if (help != null && link != null)
             TextButton(
                 onPressed: () async => await launchUrl(Uri.parse(link)),
-                child: Text(translate(help))),
+                child: Text(translate(help),
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600))),
           if (btnText.isNotEmpty)
             _altunakarKucukDugme(context, translate(btnText), onPressed)
                 .marginOnly(left: 10),

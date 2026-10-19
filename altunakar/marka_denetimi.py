@@ -19,6 +19,8 @@ iste("PRODUCT_BUNDLE_IDENTIFIER = com.altunakar.desk" in xc, "AppInfo.xcconfig: 
 iste("com.carriez" not in oku("flutter/macos/Runner/Info.plist"), "Info.plist: com.carriez kaldi")
 iste("com.carriez" not in oku("flutter/macos/Runner.xcodeproj/project.pbxproj"),
      "project.pbxproj: com.carriez paket kimligi kaldi (AppInfo.xcconfig'i ezer)")
+iste("<string>rustdesk</string>" not in oku("flutter/macos/Runner/Info.plist"),
+     "Info.plist: baglanti adresi semasi rustdesk:// kaldi (altunakardesk:// olmali; gercek RustDesk ile cakisir)")
 
 rc = oku("flutter/windows/runner/Runner.rc")
 for satir in rc.splitlines():
