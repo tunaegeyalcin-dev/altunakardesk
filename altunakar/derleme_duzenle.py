@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""flutter-build.yml ve Mac derleme dosyalarini AltunakarDesk icin duzenler.
+"""flutter-build.yml, bridge.yml ve Mac derleme dosyalarini AltunakarDesk icin duzenler.
 Tekrar calistirmak zararsizdir; RustDesk guncellemesinde beklenen satir kaybolursa durur."""
 import pathlib, re, sys
 
@@ -9,7 +9,7 @@ AD = "AltunakarDesk"
 def dosya_degistir(yol, eski, yeni):
     p = KOK / yol
     s = p.read_text(encoding="utf-8")
-    if eski not in s and yeni in s:
+    if yeni in s and (eski not in s or eski in yeni):  # daha once uygulanmis (ekleme de olabilir)
         return
     if eski not in s:
         sys.exit(f"{yol}: '{eski}' bulunamadi")
@@ -22,6 +22,53 @@ dosya_degistir("flutter/macos/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcs
 # Xcode projesi paket kimligini her yapilandirmada ayrica yazar (AppInfo.xcconfig'i ezer)
 dosya_degistir("flutter/macos/Runner.xcodeproj/project.pbxproj",
                "PRODUCT_BUNDLE_IDENTIFIER = com.carriez.rustdesk;", "PRODUCT_BUNDLE_IDENTIFIER = com.altunakar.desk;")
+# Mac Intel paketi Apple islemcili kosucuda capraz derlenir (CARGO_BUILD_TARGET=x86_64-apple-darwin):
+# cargo ciktisi target/<hedef>/release'e duser, sonraki adimlar target/release bekler
+dosya_degistir("build.py",
+               "    if not skip_cargo:\n"
+               "        # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project\n"
+               "        system2(\n"
+               "            f'MACOSX_DEPLOYMENT_TARGET=10.14 cargo build --locked --features {features} --release')\n",
+               "    capraz = os.environ.get('CARGO_BUILD_TARGET', '')  # AltunakarDesk: Intel paketi capraz derleme\n"
+               "    if not skip_cargo:\n"
+               "        # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project\n"
+               "        system2(\n"
+               "            f'MACOSX_DEPLOYMENT_TARGET=10.14 cargo build --locked --features {features} --release')\n"
+               "        if capraz:\n"
+               "            system2(f'mkdir -p target/release && cp target/{capraz}/release/liblibrustdesk.dylib '\n"
+               "                    f'target/{capraz}/release/service target/release/')\n")
+# etkin mimari (arm64) ARCHS'ta olmadigindan ONLY_ACTIVE_ARCH=YES iken x86_64 hic derlenmez
+dosya_degistir("build.py",
+               "    mac_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x86_64'\n"
+               "    system2(\n"
+               "        f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES flutter build macos --release')\n",
+               "    mac_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x86_64'\n"
+               "    tek_mimari = 'YES'\n"
+               "    if capraz.startswith('x86_64'):\n"
+               "        mac_arch, tek_mimari = 'x86_64', 'NO'\n"
+               "    system2(\n"
+               "        f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH={tek_mimari} flutter build macos --release')\n")
+
+# Gereksiz paketler (Tuna 10-19): Windows ARM ve Linux yok. Kalanlar: Windows x64 exe/msi, Mac Apple + Intel dmg.
+def girdi_sil(govde, anahtar):
+    """Matristen 'anahtar' satirini iceren '- {' ... '}' girdisini ustundeki yorumlarla birlikte siler."""
+    satirlar = govde.split("\n")
+    i = next((n for n, x in enumerate(satirlar) if x.strip() == anahtar), None)
+    if i is None:
+        return govde  # daha once silinmis
+    bas = i
+    while satirlar[bas].strip() != "- {":
+        bas -= 1
+    while satirlar[bas - 1].strip().startswith("#"):
+        bas -= 1
+    son = i
+    while satirlar[son].strip() != "}":
+        son += 1
+    return "\n".join(satirlar[:bas] + satirlar[son + 1:])
+
+KOPRU = KOK / ".github/workflows/bridge.yml"
+KOPRU.write_text(girdi_sil(KOPRU.read_text(encoding="utf-8"), 'artifact-name: "bridge-artifact-flutter-3.44",'),
+                 encoding="utf-8")
 
 YML = KOK / ".github/workflows/flutter-build.yml"
 s = YML.read_text(encoding="utf-8")
@@ -74,8 +121,17 @@ def adim_kapat(ad, adim):
 
 for ad in ["build-for-windows-sciter", "build-rustdesk-ios", "build-rustdesk-android",
            "build-rustdesk-android-universal", "build-rustdesk-linux-drm", "build-rustdesk-linux-sciter",
-           "build-appimage", "build-flatpak", "build-rustdesk-web", "publish_unsigned"]:
+           "build-appimage", "build-flatpak", "build-rustdesk-web", "publish_unsigned",
+           "build-rustdesk-linux"]:
     is_kapat(ad)
+
+def matris_sil(ad, anahtar):
+    global s
+    a, b = is_araligi(ad)
+    s = s[:a] + girdi_sil(s[a:b], anahtar) + s[b:]
+
+matris_sil("build-for-windows-flutter", "target: aarch64-pc-windows-msvc,")
+matris_sil("build-RustDeskTempTopMostWindow", "target: windows-11-arm,")
 
 W = "build-for-windows-flutter"
 iste_degistir(W, "runner/Release ./rustdesk\n",
@@ -101,6 +157,39 @@ iste_degistir(M, DMG_SATIRI,
 # imzasiz dmg zaten mimari ekiyle uretilir; yeniden adlandirma dongusu eki ikilemesin
 iste_degistir(M, "for name in AltunakarDesk*??.dmg; do\n",
               "for name in AltunakarDesk*??.dmg; do\n              case \"$name\" in *-${{ matrix.job.arch }}.dmg) continue ;; esac\n")
+# Intel kosucu yavas (bagimliliklar 15-23 dk) ve 10-19'da 'Build rustdesk'te 2+ saat takildi (varsayilan sinir 6 sa).
+# Intel paketi Apple islemcili kosucuda capraz derlenir; olagan sure ~35 dk.
+iste_degistir(M, "    runs-on: ${{ matrix.job.os }}\n    needs: [generate-bridge]\n",
+              "    runs-on: ${{ matrix.job.os }}\n    timeout-minutes: 120\n    needs: [generate-bridge]\n")
+INTEL_ESKI = re.compile(r"^              os: macos-15-intel,.*$", re.M)
+INTEL_YENI = "              os: macos-14, # Intel paketi de Apple islemcili kosucuda (capraz derleme; eski: macos-15-intel)"
+a, b = is_araligi(M)
+if INTEL_YENI not in s[a:b]:
+    if not INTEL_ESKI.search(s[a:b]):
+        sys.exit(f"{M}: macos-15-intel satiri bulunamadi")
+    s = s[:a] + INTEL_ESKI.sub(INTEL_YENI, s[a:b], count=1) + s[b:]
+# iki Mac isi ayni kosucu turunde: onbellek anahtari hedefe gore ayrilsin
+iste_degistir(M, "          prefix-key: ${{ matrix.job.os }}\n",
+              "          prefix-key: ${{ matrix.job.os }}\n          key: ${{ matrix.job.target }}\n")
+# vcpkg yardimci araclari (host) x86_64 derlenir ve Rosetta ile calisir
+iste_degistir(M, "          brew install llvm create-dmg\n",
+              "          brew install llvm create-dmg\n"
+              "          if [ \"$(uname -m)\" = arm64 ] && [ \"${{ matrix.job.arch }}\" = x86_64 ]; then\n"
+              "            sudo softwareupdate --install-rosetta --agree-to-license || true\n"
+              "            arch -x86_64 /usr/bin/true\n"
+              "          fi\n")
+# ffmpeg vcpkg.json'da yalniz "host" bagimliligi: hedef ve host uclusu ayni (x64-osx) olmazsa Intel pakete girmez
+iste_degistir(M, "      - name: Install vcpkg dependencies\n        run: |\n",
+              "      - name: Install vcpkg dependencies\n"
+              "        env:\n"
+              "          VCPKG_DEFAULT_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n"
+              "          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}\n"
+              "        run: |\n")
+iste_degistir(M, "      - name: Build rustdesk\n        run: |\n",
+              "      - name: Build rustdesk\n        run: |\n"
+              "          if [ \"$(uname -m)\" = arm64 ] && [ \"${{ matrix.job.arch }}\" = x86_64 ]; then\n"
+              "            export CARGO_BUILD_TARGET=x86_64-apple-darwin  # build.py ciktiyi target/release'e alir\n"
+              "          fi\n")
 
 YML.write_text(s, encoding="utf-8")
 print("derleme duzeni hazir")

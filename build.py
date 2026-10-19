@@ -932,10 +932,14 @@ def build_deb_from_folder(version, binary_folder, want_drm=False):
 
 
 def build_flutter_dmg(version, features):
+    capraz = os.environ.get('CARGO_BUILD_TARGET', '')  # AltunakarDesk: Intel paketi capraz derleme
     if not skip_cargo:
         # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project
         system2(
             f'MACOSX_DEPLOYMENT_TARGET=10.14 cargo build --locked --features {features} --release')
+        if capraz:
+            system2(f'mkdir -p target/release && cp target/{capraz}/release/liblibrustdesk.dylib '
+                    f'target/{capraz}/release/service target/release/')
     # copy dylib
     system2(
         "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
@@ -944,8 +948,11 @@ def build_flutter_dmg(version, features):
     # so the universal-by-default ARCHS_STANDARD doesn't try to link a missing slice.
     # FLUTTER_XCODE_* env vars are forwarded to xcodebuild as build settings.
     mac_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x86_64'
+    tek_mimari = 'YES'
+    if capraz.startswith('x86_64'):
+        mac_arch, tek_mimari = 'x86_64', 'NO'
     system2(
-        f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES flutter build macos --release')
+        f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH={tek_mimari} flutter build macos --release')
     system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/AltunakarDesk.app/Contents/MacOS/')
     '''
     system2(
