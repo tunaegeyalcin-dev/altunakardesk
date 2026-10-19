@@ -2554,7 +2554,7 @@ class _AboutState extends State<_About> {
                       .marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com/privacy.html');
+                    launchUrlString('https://github.com/tunaegeyalcin-dev/altunakardesk/blob/altunakar/altunakar/README.md#gizlilik');
                   },
                   child: Text(
                     translate('Privacy Statement'),
@@ -2562,14 +2562,14 @@ class _AboutState extends State<_About> {
                   ).marginSymmetric(vertical: 4.0)),
               InkWell(
                   onTap: () {
-                    launchUrlString('https://rustdesk.com');
+                    launchUrlString('https://github.com/tunaegeyalcin-dev/altunakardesk');
                   },
                   child: Text(
                     translate('Website'),
                     style: linkStyle,
                   ).marginSymmetric(vertical: 4.0)),
               Container(
-                decoration: const BoxDecoration(color: Color(0xFF2c8cff)),
+                decoration: const BoxDecoration(color: Color(0xFF0a5ecb)),
                 padding:
                     const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
                 child: SelectionArea(
@@ -2580,7 +2580,7 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd.\n$license',
+                            'AltunakarDesk © ${DateTime.now().toString().substring(0, 4)} Altunakar Bilgisayar\nRustDesk tabanlıdır: Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd. (GNU AGPL-3.0)\nKaynak kod: https://github.com/tunaegeyalcin-dev/altunakardesk\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(
