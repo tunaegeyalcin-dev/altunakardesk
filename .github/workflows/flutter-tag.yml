@@ -19,6 +19,8 @@ jobs:
 
   run-flutter-tag-build:
     needs: altunakar-marka
+    permissions:
+      contents: write  # surum yayinlama (catal varsayilani salt okunur)
     uses: ./.github/workflows/flutter-build.yml
     secrets: inherit
     with:
