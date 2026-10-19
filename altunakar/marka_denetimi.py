@@ -17,6 +17,8 @@ xc = oku("flutter/macos/Runner/Configs/AppInfo.xcconfig")
 iste("PRODUCT_NAME = AltunakarDesk" in xc, "AppInfo.xcconfig: PRODUCT_NAME AltunakarDesk degil")
 iste("PRODUCT_BUNDLE_IDENTIFIER = com.altunakar.desk" in xc, "AppInfo.xcconfig: paket kimligi com.altunakar.desk degil")
 iste("com.carriez" not in oku("flutter/macos/Runner/Info.plist"), "Info.plist: com.carriez kaldi")
+iste("com.carriez" not in oku("flutter/macos/Runner.xcodeproj/project.pbxproj"),
+     "project.pbxproj: com.carriez paket kimligi kaldi (AppInfo.xcconfig'i ezer)")
 
 rc = oku("flutter/windows/runner/Runner.rc")
 for satir in rc.splitlines():

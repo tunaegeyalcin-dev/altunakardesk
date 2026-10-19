@@ -19,6 +19,9 @@ def dosya_degistir(yol, eski, yeni):
 dosya_degistir("build.py", "./build/macos/Build/Products/Release/RustDesk.app", f"./build/macos/Build/Products/Release/{AD}.app")
 dosya_degistir("flutter/macos/Runner.xcodeproj/project.pbxproj", "RustDesk.app", f"{AD}.app")
 dosya_degistir("flutter/macos/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme", "RustDesk.app", f"{AD}.app")
+# Xcode projesi paket kimligini her yapilandirmada ayrica yazar (AppInfo.xcconfig'i ezer)
+dosya_degistir("flutter/macos/Runner.xcodeproj/project.pbxproj",
+               "PRODUCT_BUNDLE_IDENTIFIER = com.carriez.rustdesk;", "PRODUCT_BUNDLE_IDENTIFIER = com.altunakar.desk;")
 
 YML = KOK / ".github/workflows/flutter-build.yml"
 s = YML.read_text(encoding="utf-8")
@@ -88,6 +91,9 @@ iste_degistir(M, "RustDesk.app", f"{AD}.app")
 iste_degistir(M, "rustdesk-${{ env.VERSION }}", f"{AD}-${{{{ env.VERSION }}}}")
 iste_degistir(M, "rustdesk*??.dmg", f"{AD}*??.dmg")
 iste_degistir(M, "rustdesk*-${{ matrix.job.arch }}.dmg", f"{AD}*-${{{{ matrix.job.arch }}}}.dmg")
+# imzasiz dmg zaten mimari ekiyle uretilir; yeniden adlandirma dongusu eki ikilemesin
+iste_degistir(M, "for name in AltunakarDesk*??.dmg; do\n",
+              "for name in AltunakarDesk*??.dmg; do\n              case \"$name\" in *-${{ matrix.job.arch }}.dmg) continue ;; esac\n")
 
 YML.write_text(s, encoding="utf-8")
 print("derleme duzeni hazir")

@@ -962,6 +962,7 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           for name in AltunakarDesk*??.dmg; do
+              case "$name" in *-${{ matrix.job.arch }}.dmg) continue ;; esac
               mv "$name" "${name%%.dmg}-${{ matrix.job.arch }}.dmg"
           done
 
