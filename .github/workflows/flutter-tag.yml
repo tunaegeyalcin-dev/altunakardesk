@@ -10,7 +10,15 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+-[0-9]+'
 
 jobs:
+  altunakar-marka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Altunakar marka denetimi
+        run: python3 altunakar/marka_denetimi.py
+
   run-flutter-tag-build:
+    needs: altunakar-marka
     uses: ./.github/workflows/flutter-build.yml
     secrets: inherit
     with:
