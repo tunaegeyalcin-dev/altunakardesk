@@ -23,6 +23,7 @@ echo "$CIFTLER" | while read -r desen hedef; do
 done
 gh release edit "$ETIKET" -R "$DEPO" --prerelease=false --latest
 for ad in AltunakarDesk-Windows.exe AltunakarDesk-Windows.msi AltunakarDesk-Mac-Apple.dmg AltunakarDesk-Mac-Intel.dmg; do
-  kod=$(curl -s -o /dev/null -w "%{http_code}" -L -I "https://github.com/$DEPO/releases/latest/download/$ad")
+  # GitHub depolamasi HEAD (-I) istegine 404 doner; ilk baytin GET'i dogru denetimdir (206/200).
+  kod=$(curl -s -o /dev/null -w "%{http_code}" -L -r 0-0 "https://github.com/$DEPO/releases/latest/download/$ad")
   echo "$kod  $ad"
 done
