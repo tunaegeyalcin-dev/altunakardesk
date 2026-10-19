@@ -1285,6 +1285,16 @@ impl RendezvousMediator {
     }
 
     async fn handle_uuid_mismatch(&mut self, socket: Sink<'_>) -> ResultType<()> {
+        // Altunakar: merkeze bir kez kaydolmus (kilitli) numara asla degismez. Ayni numarayla
+        // hemen yeniden kayit denenmez (sonsuz dongu olmasin); olagan kayit zamanlayicisi dener.
+        if Config::is_id_locked() {
+            log::error!(
+                "UUID_MISMATCH from {}: numara kilitli, degistirilmiyor; Altunakar'a bildirilmeli",
+                self.host
+            );
+            Config::set_key_confirmed(false);
+            return Ok(());
+        }
         {
             let mut solving = SOLVING_PK_MISMATCH.lock().await;
             if solving.is_empty() || *solving == self.host {

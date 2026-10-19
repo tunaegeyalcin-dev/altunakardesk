@@ -519,6 +519,11 @@ class FileController {
       if (requestGeneration != _directoryRequestGeneration) {
         return true;
       }
+      // Altunakar: "gizli dosyalari goster" kapaliyken nokta ile baslayan klasor ve
+      // dosyalar (.ssh, .claude gibi; Windows'ta gizli ozniteligi tasimazlar) de gizlenir.
+      if (!showHidden) {
+        fd.entries.removeWhere((e) => e.name.startsWith('.'));
+      }
       fd.format(isWindows, sort: sortBy.value);
       selectedItems.reconcile(fd.entries);
       directory.value = fd;

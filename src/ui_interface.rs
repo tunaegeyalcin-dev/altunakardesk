@@ -1498,7 +1498,15 @@ pub async fn change_id_shared(id: String, old_id: String) -> String {
     res
 }
 
+/// Altunakar: bilgisayar numarasi kurulumda donanimdan bir kez verilir ve degistirilemez.
+pub const ALTUNAKAR_ID_DEGISMEZ: &str = "Bu bilgisayarın numarası kurulumda verilir ve değiştirilemez.";
+const ALTUNAKAR_ID_SABIT: bool = true;
+
 pub async fn change_id_shared_(id: String, old_id: String) -> &'static str {
+    if ALTUNAKAR_ID_SABIT {
+        log::warn!("Altunakar: numara degistirme istegi reddedildi ({} -> {})", old_id, id);
+        return ALTUNAKAR_ID_DEGISMEZ;
+    }
     if !hbb_common::is_valid_custom_id(&id) {
         log::debug!(
             "debugging invalid id: \"{id}\", len: {}, base64: \"{}\"",

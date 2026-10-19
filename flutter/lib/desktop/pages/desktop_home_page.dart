@@ -59,6 +59,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
+    if (!isIncomingOnly) {
+      // Altunakar: koyu sol menu + "Bu bilgisayar" karti + baglanma alani.
+      return _buildBlock(
+          child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _altunakarYanMenu(context),
+          Expanded(child: _altunakarIcerik(context)),
+        ],
+      ));
+    }
     return _buildBlock(
         child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,6 +79,240 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
       ],
     ));
+  }
+
+  // ---------------------------------------------------------------- Altunakar
+  static const _gece = Color(0xFF141A22);
+  static const _cizgi = Color(0xFFE6E9EE);
+  static const _soluk = Color(0xFF5C6775);
+
+  Widget _altunakarYanMenu(BuildContext context) {
+    const yazi = Color(0xFFC9D2DE);
+    Widget oge(IconData ikon, String ad, bool secili, VoidCallback? tikla) {
+      return Material(
+        color: secili ? MyTheme.accent : Colors.transparent,
+        borderRadius: BorderRadius.circular(7),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(7),
+          hoverColor: Colors.white.withOpacity(0.06),
+          onTap: tikla,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            child: Row(children: [
+              Icon(ikon, size: 18, color: secili ? Colors.white : yazi),
+              const SizedBox(width: 11),
+              Flexible(
+                child: Text(ad,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: secili ? Colors.white : yazi,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13.5)),
+              ),
+            ]),
+          ),
+        ),
+      ).marginOnly(bottom: 2);
+    }
+
+    return Container(
+      width: 214,
+      color: _gece,
+      padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset('assets/icon.png', width: 28, height: 28),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(bind.mainGetAppNameSync(),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15.5)),
+            ),
+          ]).marginOnly(left: 8, bottom: 18),
+          oge(Icons.desktop_windows_outlined, translate('Connect'), true, null),
+          oge(Icons.folder_open_outlined, translate('Transfer file'), false,
+              () => _altunakarDosyaAktarSor(context)),
+          oge(Icons.settings_outlined, translate('Settings'), false,
+              () => DesktopTabPage.onAddSetting()),
+          const Spacer(),
+          Container(height: 1, color: Colors.white.withOpacity(0.08))
+              .marginOnly(bottom: 12),
+          const Text('Destek hattı',
+                  style: TextStyle(color: Color(0xFF8E99A8), fontSize: 12))
+              .marginOnly(left: 10),
+          const Text('0530 338 21 91',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600))
+              .marginOnly(left: 10, top: 2),
+          FutureBuilder<String>(
+            future: bind.mainGetVersion(),
+            builder: (_, v) => Text(
+                v.hasData ? '${translate("Version")} ${v.data}' : '',
+                style: const TextStyle(color: Color(0xFF8E99A8), fontSize: 12)),
+          ).marginOnly(left: 10, top: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _altunakarIcerik(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: gFFI.serverModel,
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!bind.isOutgoingOnly()) buildPresetPasswordWarning(),
+            Obx(() => buildHelpCards(stateGlobal.updateUrl.value))
+                .paddingSymmetric(horizontal: 28),
+            if (!bind.isOutgoingOnly())
+              _altunakarBuPcKarti(context).paddingOnly(left: 28, top: 18, right: 28),
+            Expanded(child: ConnectionPage()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _altunakarKucukDugme(BuildContext context, String yazi, VoidCallback f) {
+    return SizedBox(
+      height: 30,
+      child: OutlinedButton(
+        onPressed: f,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 11),
+          side: const BorderSide(color: Color(0xFFD5DAE1)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        ),
+        child: Text(yazi,
+            style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.titleLarge?.color)),
+      ),
+    );
+  }
+
+  Widget _altunakarBuPcKarti(BuildContext context) {
+    return Consumer<ServerModel>(builder: (context, model, child) {
+      final showOneTime = model.approveMode != 'click' &&
+          model.verificationMethod != kUsePermanentPassword;
+      Widget etiket(String t) => Text(t,
+              style: const TextStyle(fontSize: 12.5, color: _soluk))
+          .marginOnly(bottom: 4);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: _cizgi),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                etiket('Bu bilgisayarın numarası'),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: model.serverId,
+                    builder: (_, v, __) => SelectableText(v.text,
+                        style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.6)),
+                  ),
+                  const SizedBox(width: 12),
+                  _altunakarKucukDugme(context, 'Kopyala', () {
+                    Clipboard.setData(
+                        ClipboardData(text: model.serverId.text.replaceAll(' ', '')));
+                    showToast(translate('Copied'));
+                  }),
+                ]),
+              ],
+            ),
+            Container(width: 1, height: 48, color: _cizgi)
+                .marginSymmetric(horizontal: 26),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                etiket(translate('One-time Password')),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: model.serverPasswd,
+                    builder: (_, v, __) => SelectableText(
+                        showOneTime ? v.text : '••••••',
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2.4)),
+                  ),
+                  const SizedBox(width: 12),
+                  if (showOneTime)
+                    _altunakarKucukDugme(context, 'Yenile',
+                        () => bind.mainUpdateTemporaryPassword()),
+                ]),
+              ],
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(translate('desk_tip'),
+                  textAlign: TextAlign.end,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5, color: _soluk)),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _altunakarDosyaAktarSor(BuildContext context) {
+    final kontrol = TextEditingController();
+    void git() {
+      final id = kontrol.text.replaceAll(' ', '');
+      if (id.isEmpty) return;
+      Navigator.of(context).pop();
+      connect(context, id, isFileTransfer: true);
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(translate('Transfer file')),
+        content: SizedBox(
+          width: 360,
+          child: TextField(
+            controller: kontrol,
+            autofocus: true,
+            style: const TextStyle(fontSize: 18, letterSpacing: 0.5),
+            decoration: InputDecoration(hintText: translate('Enter Remote ID')),
+            onSubmitted: (_) => git(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(translate('Cancel'))),
+          ElevatedButton(onPressed: git, child: Text(translate('Connect'))),
+        ],
+      ),
+    );
   }
 
   Widget _buildBlock({required Widget child}) {
@@ -597,6 +842,42 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       }
     }
 
+    // Altunakar: pembe degrade kart yerine sade, acik sari uyari seridi.
+    if (!bind.isIncomingOnly()) {
+      final yazi = [
+        if (title.isNotEmpty) translate(title),
+        if (content.isNotEmpty) translate(content),
+      ].join(' ');
+      return Container(
+        margin: const EdgeInsets.only(top: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFDF6EC),
+          border: Border.all(color: const Color(0xFFF1DCC0)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Text(yazi,
+                style: const TextStyle(
+                    fontSize: 13, height: 1.4, color: Color(0xFF141A22))),
+          ),
+          if (help != null && link != null)
+            TextButton(
+                onPressed: () async => await launchUrl(Uri.parse(link)),
+                child: Text(translate(help))),
+          if (btnText.isNotEmpty)
+            _altunakarKucukDugme(context, translate(btnText), onPressed)
+                .marginOnly(left: 10),
+          if (closeButton == true)
+            IconButton(
+              tooltip: translate('Close'),
+              icon: const Icon(Icons.close, size: 18, color: _soluk),
+              onPressed: closeCard,
+            ),
+        ]),
+      );
+    }
     return Stack(
       children: [
         Container(

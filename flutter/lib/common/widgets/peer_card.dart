@@ -23,6 +23,21 @@ enum PeerUiType { grid, tile, list }
 
 final peerCardUiType = PeerUiType.grid.obs;
 
+// Altunakar: kart onizlemesi isletim sistemine gore sakin degrade (rastgele renk yerine).
+BoxDecoration _altunakarOnizleme(String platform) {
+  final p = platform.toLowerCase();
+  final renkler = p.contains('mac')
+      ? const [Color(0xFF3A3F6B), Color(0xFF8A5A8C), Color(0xFFE3A073)]
+      : p.contains('linux')
+          ? const [Color(0xFF2B2F36), Color(0xFF4A5260)]
+          : const [Color(0xFF1D4F91), Color(0xFF2F7FD6), Color(0xFF6FB1F0)];
+  return BoxDecoration(
+      gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: renkler));
+}
+
 bool? hideUsernameOnCard;
 
 class _PeerCard extends StatefulWidget {
@@ -95,7 +110,7 @@ class _PeerCardState extends State<_PeerCard>
     final peer = super.widget.peer;
     var deco = Rx<BoxDecoration?>(
       BoxDecoration(
-        border: Border.all(color: Colors.transparent, width: _borderWidth),
+        border: Border.all(color: const Color(0xFFE6E9EE), width: _borderWidth),
         borderRadius: BorderRadius.circular(
           peerCardUiType.value == PeerUiType.grid ? _cardRadius : _tileRadius,
         ),
@@ -114,7 +129,7 @@ class _PeerCardState extends State<_PeerCard>
       },
       onExit: (evt) {
         deco.value = BoxDecoration(
-          border: Border.all(color: Colors.transparent, width: _borderWidth),
+          border: Border.all(color: const Color(0xFFE6E9EE), width: _borderWidth),
           borderRadius: BorderRadius.circular(
             peerCardUiType.value == PeerUiType.grid ? _cardRadius : _tileRadius,
           ),
@@ -303,7 +318,7 @@ class _PeerCardState extends State<_PeerCard>
               children: [
                 Expanded(
                   child: Container(
-                    color: str2color('${peer.id}${peer.platform}', 0x7f),
+                    decoration: _altunakarOnizleme(peer.platform),
                     child: Row(
                       children: [
                         Expanded(

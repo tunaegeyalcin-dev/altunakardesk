@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
@@ -456,16 +457,11 @@ class _CmHeaderState extends State<_CmHeader>
   Widget build(BuildContext context) {
     super.build(context);
     return Container(
+      // Altunakar: degrade yerine sade, cerceveli baslik
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10.0),
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            Color(0xff00bfe1),
-            Color(0xff0071ff),
-          ],
-        ),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border.all(color: const Color(0xFFE6E9EE)),
       ),
       margin: EdgeInsets.symmetric(horizontal: 5.0, vertical: 10.0),
       padding: EdgeInsets.only(
@@ -487,45 +483,45 @@ class _CmHeaderState extends State<_CmHeader>
                     child: Text(
                   client.name,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).textTheme.titleLarge?.color,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 18,
                     overflow: TextOverflow.ellipsis,
                   ),
                   maxLines: 1,
                 )),
                 FittedBox(
                   child: Text(
-                    "(${client.peerId})",
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    "${translate('ID')} ${formatID(client.peerId)}",
+                    style: TextStyle(color: Color(0xFF5C6775), fontSize: 13),
                   ),
                 ),
                 if (client.type_() == ClientType.terminal)
                   FittedBox(
                     child: Text(
                       translate("Terminal"),
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Color(0xFF5C6775), fontSize: 12),
                     ),
                   ),
                 if (client.type_() == ClientType.file)
                   FittedBox(
                     child: Text(
                       translate("Transfer file"),
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Color(0xFF5C6775), fontSize: 12),
                     ),
                   ),
                 if (client.type_() == ClientType.camera)
                   FittedBox(
                     child: Text(
                       translate("View camera"),
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Color(0xFF5C6775), fontSize: 12),
                     ),
                   ),
                 if (client.portForward.isNotEmpty)
                   FittedBox(
                     child: Text(
                       "Port Forward: ${client.portForward}",
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Color(0xFF5C6775), fontSize: 12),
                     ),
                   ),
                 SizedBox(height: 10.0),
@@ -538,7 +534,8 @@ class _CmHeaderState extends State<_CmHeader>
                               ? translate("Disconnected")
                               : translate("Connected")
                           : "${translate("Request access to your device")}...",
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                          color: MyTheme.accent, fontWeight: FontWeight.w600),
                     ).marginOnly(right: 8.0),
                     if (client.authorized)
                       Obx(
@@ -546,7 +543,7 @@ class _CmHeaderState extends State<_CmHeader>
                           formatDurationToTime(
                             Duration(seconds: _time.value),
                           ),
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: Color(0xFF5C6775)),
                         ),
                       )
                   ],
@@ -585,8 +582,8 @@ class _CmHeaderState extends State<_CmHeader>
   Widget _buildClientAvatar() {
     return buildAvatarWidget(
           avatar: client.avatar,
-          size: 70,
-          borderRadius: 15,
+          size: 44,
+          borderRadius: 10,
           fallback: _buildInitialAvatar(),
         ) ??
         _buildInitialAvatar();
@@ -594,19 +591,19 @@ class _CmHeaderState extends State<_CmHeader>
 
   Widget _buildInitialAvatar() {
     return Container(
-      width: 70,
-      height: 70,
+      width: 44,
+      height: 44,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: str2color(client.name),
-        borderRadius: BorderRadius.circular(15.0),
+        borderRadius: BorderRadius.circular(10.0),
       ),
       child: Text(
         client.name.isNotEmpty ? client.name[0] : '?',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           color: Colors.white,
-          fontSize: 55,
+          fontSize: 24,
         ),
       ),
     );
@@ -624,53 +621,42 @@ class _PrivilegeBoard extends StatefulWidget {
 
 class _PrivilegeBoardState extends State<_PrivilegeBoard> {
   late final client = widget.client;
+  // Altunakar: simge karesi yerine yazili satir + anahtar (ne verildigi acikca okunur).
   Widget buildPermissionIcon(bool enabled, IconData iconData,
       Function(bool)? onTap, String tooltipText,
       {required bool canModify}) {
-    return Tooltip(
-      message: "$tooltipText: ${enabled ? "ON" : "OFF"}",
-      waitDuration: Duration.zero,
-      child: Container(
-        decoration: BoxDecoration(
-          color: enabled
-              ? (canModify ? MyTheme.accent : MyTheme.accent.withOpacity(0.6))
-              : Colors.grey[700],
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        padding: EdgeInsets.all(8.0),
-        child: InkWell(
-          onTap: canModify
-              ? () =>
-                  checkClickTime(widget.client.id, () => onTap?.call(!enabled))
-              : null,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Expanded(
-                child: Icon(
-                  iconData,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+    return SizedBox(
+      height: 34,
+      child: Row(children: [
+        Icon(iconData, size: 17, color: const Color(0xFF5C6775)),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(tooltipText,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13))),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: enabled,
+            activeColor: MyTheme.accent,
+            onChanged: canModify
+                ? (v) => checkClickTime(widget.client.id, () => onTap?.call(v))
+                : null,
           ),
         ),
-      ),
+      ]),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final crossAxisCount = 4;
-    final spacing = 10.0;
     final canModifyPermission =
         bind.mainGetBuildinOption(key: kOptionEnablePermChangeInAcceptWindow) !=
             'N';
     return Container(
       width: double.infinity,
-      height: 160.0,
       margin: EdgeInsets.all(5.0),
-      padding: EdgeInsets.all(5.0),
+      padding: EdgeInsets.fromLTRB(12, 8, 6, 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10.0),
         color: Theme.of(context).colorScheme.background,
@@ -684,19 +670,14 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             translate("Permissions"),
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ).marginOnly(left: 4.0, bottom: 8.0),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: crossAxisCount,
-              padding: EdgeInsets.symmetric(horizontal: spacing),
-              mainAxisSpacing: spacing,
-              crossAxisSpacing: spacing,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ).marginOnly(bottom: 4.0),
+          Column(
               children: client.type_() == ClientType.camera
                   ? [
                       buildPermissionIcon(
@@ -855,7 +836,6 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
                           canModify: canModifyPermission,
                         )
                     ],
-            ),
           ),
         ],
       ),
