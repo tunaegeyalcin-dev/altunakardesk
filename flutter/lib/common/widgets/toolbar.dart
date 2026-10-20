@@ -531,6 +531,23 @@ List<TTextMenu> toolbarControls(BuildContext context, String id, FFI ffi) {
               showRestartRemoteDevice(pi, id, sessionId, ffi.dialogManager)),
     );
   }
+  // Altunakar: uzak Windows'ta kullaniciyi degistir / oturumu kapat (yeniden baslatma izniyle)
+  if (isDefaultConn &&
+      perms['restart'] != false &&
+      pi.platform == kPeerPlatformWindows) {
+    v.add(
+      TTextMenu(
+          child: Text(translate('Switch user')),
+          onPressed: () => showAltunakarOturumIslemi(
+              pi, id, sessionId, ffi.dialogManager, kAltunakarKullaniciDegistir)),
+    );
+    v.add(
+      TTextMenu(
+          child: Text(translate('Sign out')),
+          onPressed: () => showAltunakarOturumIslemi(
+              pi, id, sessionId, ffi.dialogManager, kAltunakarOturumuKapat)),
+    );
+  }
   // insertLock
   if (isDefaultConn && !ffiModel.viewOnly && ffi.ffiModel.keyboard) {
     v.add(

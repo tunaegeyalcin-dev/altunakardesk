@@ -3934,6 +3934,16 @@ impl LoginConfigHandler {
         msg_out
     }
 
+    /// Altunakar: uzak Windows'ta kullaniciyi degistir / oturumu kapat
+    /// (crate::common::altunakar_oturum).
+    pub fn altunakar_oturum_islemi(&self, islem: u32) -> Message {
+        let mut misc = Misc::new();
+        misc.set_altunakar_oturum_islemi(islem);
+        let mut msg_out = Message::new();
+        msg_out.set_misc(misc);
+        msg_out
+    }
+
     pub fn mark_restarting_remote_device(&mut self) {
         self.restarting_remote_device = true;
         self.restart_remote_device_at = Some(Instant::now());

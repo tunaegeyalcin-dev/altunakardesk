@@ -1431,6 +1431,45 @@ void showRestartRemoteDevice(PeerInfo pi, String id, SessionID sessionId,
   if (res == true) bind.sessionRestartRemoteDevice(sessionId: sessionId);
 }
 
+// Altunakar: crate::common::altunakar_oturum ile ayni degerler.
+const kAltunakarKullaniciDegistir = 1;
+const kAltunakarOturumuKapat = 2;
+
+void showAltunakarOturumIslemi(PeerInfo pi, String id, SessionID sessionId,
+    OverlayDialogManager dialogManager, int islem) async {
+  final kapat = islem == kAltunakarOturumuKapat;
+  final res = await dialogManager
+      .show<bool>((setState, close, context) => CustomAlertDialog(
+            title: Row(children: [
+              Icon(kapat ? Icons.logout_rounded : Icons.switch_account_rounded,
+                  color: kapat ? Colors.redAccent : null, size: 28),
+              Flexible(
+                  child: Text(translate(kapat ? 'Sign out' : 'Switch user'))
+                      .paddingOnly(left: 10)),
+            ]),
+            content: Text(
+                "${translate(kapat ? 'altunakar-sign-out-tip' : 'altunakar-switch-user-tip')}\n\n${pi.username}@${pi.hostname} ($id)"),
+            actions: [
+              dialogButton(
+                "Cancel",
+                icon: Icon(Icons.close_rounded),
+                onPressed: close,
+                isOutline: true,
+              ),
+              dialogButton(
+                kapat ? "Sign out" : "Switch user",
+                icon: Icon(Icons.done_rounded),
+                onPressed: () => close(true),
+              ),
+            ],
+            onCancel: close,
+            onSubmit: () => close(true),
+          ));
+  if (res == true) {
+    bind.sessionAltunakarOturumIslemi(sessionId: sessionId, islem: islem);
+  }
+}
+
 showSetOSPassword(
   SessionID sessionId,
   bool login,

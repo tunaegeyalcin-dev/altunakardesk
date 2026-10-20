@@ -1344,6 +1344,11 @@ class RustdeskImpl {
     return Future(() => js.context.callMethod('setByName', ['restart']));
   }
 
+  Future<void> sessionAltunakarOturumIslemi(
+      {required UuidValue sessionId, required int islem, dynamic hint}) {
+    throw UnimplementedError("sessionAltunakarOturumIslemi");
+  }
+
   String sessionGetAuditServerSync(
       {required UuidValue sessionId, required String typ, dynamic hint}) {
     return js.context.callMethod('getByName', ['audit_server', typ]);

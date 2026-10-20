@@ -867,6 +867,9 @@ message Misc {
     // is rebuilt, and held again, the next time it is shown, before any connection names it
     // by id again, so the shape just selected is always there to give.
     uint64 request_cursor_data = 39;
+    // Altunakar: uzak Windows oturum islemi (1: kullaniciyi degistir, 2: oturumu kapat).
+    // Yukari akistaki alanlarla cakismasin diye buyuk numara.
+    uint32 altunakar_oturum_islemi = 1001;
   }
 }
 

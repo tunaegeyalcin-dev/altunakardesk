@@ -1060,6 +1060,12 @@ pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
     Ok(())
 }
 
+/// Altunakar: uzak oturum islemleri (Misc.altunakar_oturum_islemi).
+pub mod altunakar_oturum {
+    pub const KULLANICI_DEGISTIR: u32 = 1;
+    pub const KAPAT: u32 = 2;
+}
+
 /// Altunakar: indirilen kurulum dosyasini son dogrulanmis bildirimdeki SHA-256 ile karsilastirir.
 pub fn altunakar_dosyayi_dogrula(dosya: &std::path::Path) -> hbb_common::ResultType<()> {
     let Some(ad) = dosya.file_name().and_then(|a| a.to_str()) else {

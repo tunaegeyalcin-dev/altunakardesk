@@ -3899,6 +3899,17 @@ impl Connection {
                             }
                         }
                     }
+                    Some(misc::Union::AltunakarOturumIslemi(_islem)) => {
+                        // Altunakar: yeniden baslatma izni olan taraf kullaniciyi degistirebilir
+                        // ve oturumu kapatabilir (yalniz Windows).
+                        #[cfg(windows)]
+                        if self.restart {
+                            match crate::platform::altunakar_oturum_islemi(_islem) {
+                                Ok(_) => log::info!("Oturum islemi {} karsi taraftan", _islem),
+                                Err(e) => log::error!("Oturum islemi {} yapilamadi: {}", _islem, e),
+                            }
+                        }
+                    }
                     #[cfg(windows)]
                     Some(misc::Union::ElevationRequest(r)) => match r.union {
                         Some(elevation_request::Union::Direct(_)) => {

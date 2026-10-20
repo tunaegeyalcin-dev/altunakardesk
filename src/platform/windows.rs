@@ -1297,6 +1297,34 @@ pub fn lock_screen() {
     }
 }
 
+/// Altunakar: kontrol eden tarafin "Kullaniciyi degistir" / "Oturumu kapat" komutu. Bu surecin
+/// calistigi Windows oturumuna uygulanir (kurulu programda --server kullanicinin oturumunda calisir).
+/// Kullaniciyi degistir = oturumu konsoldan ayirir (Windows'taki "Kullanici degistir" gibi;
+/// uygulamalar acik kalir, giris ekrani gelir). Oturumu kapat = oturumu sonlandirir.
+pub fn altunakar_oturum_islemi(islem: u32) -> ResultType<()> {
+    use crate::common::altunakar_oturum;
+    #[link(name = "WtsApi32")]
+    extern "system" {
+        fn WTSDisconnectSession(server: HANDLE, session_id: DWORD, wait: BOOL) -> BOOL;
+        fn WTSLogoffSession(server: HANDLE, session_id: DWORD, wait: BOOL) -> BOOL;
+    }
+    const WTS_CURRENT_SERVER_HANDLE: HANDLE = NULL;
+    const WTS_CURRENT_SESSION: DWORD = DWORD::MAX;
+    let ok = match islem {
+        altunakar_oturum::KULLANICI_DEGISTIR => unsafe {
+            WTSDisconnectSession(WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, FALSE)
+        },
+        altunakar_oturum::KAPAT => unsafe {
+            WTSLogoffSession(WTS_CURRENT_SERVER_HANDLE, WTS_CURRENT_SESSION, FALSE)
+        },
+        _ => bail!("bilinmeyen oturum islemi: {}", islem),
+    };
+    if ok == FALSE {
+        bail!("{}", std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
 const IS1: &str = "{54E86BC2-6C85-41F3-A9EB-1A94AC9B1F93}_is1";
 
 fn get_subkey(name: &str, wow: bool) -> String {

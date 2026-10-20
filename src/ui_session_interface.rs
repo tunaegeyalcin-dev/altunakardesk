@@ -577,6 +577,15 @@ impl<T: InvokeUiSession> Session<T> {
         self.send(Data::Message(msg));
     }
 
+    /// Altunakar: uzak Windows'ta kullaniciyi degistir / oturumu kapat. Karsi taraftaki baglanti
+    /// kopar; yeniden baslatmadaki gibi kendiliginden yeniden baglanilir ve giris ekrani gorunur.
+    pub fn altunakar_oturum_islemi(&self, islem: u32) {
+        let mut lc = self.lc.write().unwrap();
+        lc.mark_restarting_remote_device();
+        let msg = lc.altunakar_oturum_islemi(islem);
+        self.send(Data::Message(msg));
+    }
+
     pub fn get_audit_server(&self, typ: String) -> String {
         if LocalConfig::get_option("access_token").is_empty() {
             return "".to_owned();

@@ -784,6 +784,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ekran yakalama için gereken GStreamer bileşenini yükleyemedi ({})"),
         ("Relay fallback delay in seconds", "Aktarıcıya geçiş gecikmesi (saniye)"),
         ("relay-fallback-delay-tip", "Zaten kurulmuş bir aktarıcı bağlantısının, onun yerine kullanılmadan önce doğrudan WebRTC bağlantısını ne kadar beklediğidir. Yavaş bir doğrudan bağlantıya daha fazla süre tanımak için artırın; doğrudan bağlantının kurulamadığı ağlarda aktarıcıya daha erken geçmek için azaltın. Varsayılan 2.5 saniye için boş bırakın."),
-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Sesli arama başlatmak için \"Ekran paylaşımı\" sayfasındaki \"Ses yakalama\" seçeneğini açın.")
+        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Sesli arama başlatmak için \"Ekran paylaşımı\" sayfasındaki \"Ses yakalama\" seçeneğini açın."),
+        ("Switch user", "Kullanıcıyı değiştir"),
+        ("Sign out", "Oturumu kapat"),
+        ("altunakar-switch-user-tip", "Karşı bilgisayardaki oturum ayrılır ve Windows giriş ekranı gelir; açık programlar kapanmaz. Bağlantı kısa süre kopar, sonra kendiliğinden yeniden bağlanılır."),
+        ("altunakar-sign-out-tip", "Karşı bilgisayardaki kullanıcı oturumu kapatılır; kaydedilmemiş işler kaybolabilir. Bağlantı kısa süre kopar, sonra giriş ekranına kendiliğinden yeniden bağlanılır."),
     ].iter().cloned().collect();
 }
