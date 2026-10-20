@@ -2,7 +2,6 @@ use crate::{common::do_check_software_update, hbbs_http::create_http_client_with
 use hbb_common::{bail, config, log, ResultType};
 use base::config::keys;
 use std::{
-    io::Write,
     path::{Component, Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -180,8 +179,9 @@ fn check_update(manually: bool) -> ResultType<()> {
     if !manually {
         return Ok(());
     }
+    // Altunakar: MSI ile kurulduysa MSI, degilse exe ile guncellenir (ikisi de bizim derlememiz).
     #[cfg(target_os = "windows")]
-    let update_msi = crate::platform::is_msi_installed()? && !crate::is_custom_client();
+    let update_msi = crate::platform::is_msi_installed()?;
     if !(manually || config::Config::get_bool_option(keys::OPTION_ALLOW_AUTO_UPDATE)) {
         return Ok(());
     }
@@ -193,72 +193,55 @@ fn check_update(manually: bool) -> ResultType<()> {
     let update_url = crate::common::SOFTWARE_UPDATE_URL.lock().unwrap().clone();
     if update_url.is_empty() {
         log::debug!("No update available.");
-    } else {
-        let download_url = update_url.replace("tag", "download");
-        let version = download_url.split('/').last().unwrap_or_default();
-        #[cfg(target_os = "windows")]
-        let download_url = if cfg!(feature = "flutter") {
-            let Some(arch) = crate::platform::windows::release_arch_suffix() else {
-                bail!(
-                    "Unsupported Windows release architecture: {}",
-                    std::env::consts::ARCH
-                );
-            };
-            format!(
-                "{}/rustdesk-{}-{}.{}",
-                download_url,
-                version,
-                arch,
-                if update_msi { "msi" } else { "exe" }
-            )
-        } else {
-            format!("{}/rustdesk-{}-x86-sciter.exe", download_url, version)
+        return Ok(());
+    }
+    // Altunakar: Mac'te yalniz ana penceredeki bildirim kartı gosterilir; sessiz kurulum Windows'ta.
+    #[cfg(target_os = "windows")]
+    {
+        use hbb_common::altunakar_guncelleme as g;
+        use std::io::Write;
+        let Some(bildirim) = crate::common::ALTUNAKAR_BILDIRIM.lock().unwrap().clone() else {
+            bail!("dogrulanmis surum bildirimi yok");
         };
+        let version = bildirim.etiket.clone();
+        let download_url = format!(
+            "{}/{}",
+            g::indirme_kok(&version),
+            g::windows_dosya_adi(update_msi)
+        );
         log::debug!("New version available: {}", &version);
         let client = create_http_client_with_url_strict(&download_url)?;
         let Some(file_path) = get_download_file_from_url(&download_url) else {
             bail!("Failed to get the file path from the URL: {}", download_url);
         };
-        let mut is_file_exists = false;
+        // Dosya adi her surumde ayni: eskisi (ya da baskasinin biraktigi) yeniden kullanilmaz,
+        // her seferinde bu surec yeni dosya olusturur.
         if file_path.exists() {
-            // Check if the file size is the same as the server file size
-            // If the file size is the same, we don't need to download it again.
-            let file_size = std::fs::metadata(&file_path)?.len();
-            let response = client.head(&download_url).send()?;
-            if !response.status().is_success() {
-                bail!("Failed to get the file size: {}", response.status());
-            }
-            let total_size = response
-                .headers()
-                .get(reqwest::header::CONTENT_LENGTH)
-                .and_then(|ct_len| ct_len.to_str().ok())
-                .and_then(|ct_len| ct_len.parse::<u64>().ok());
-            let Some(total_size) = total_size else {
-                bail!("Failed to get content length");
-            };
-            if file_size == total_size {
-                is_file_exists = true;
-            } else {
-                std::fs::remove_file(&file_path)?;
-            }
+            std::fs::remove_file(&file_path)?;
         }
-        if !is_file_exists {
-            let response = client.get(&download_url).send()?;
-            if !response.status().is_success() {
-                bail!(
-                    "Failed to download the new version file: {}",
-                    response.status()
-                );
-            }
-            let file_data = response.bytes()?;
-            let mut file = std::fs::File::create(&file_path)?;
+        let response = client.get(&download_url).send()?;
+        if !response.status().is_success() {
+            bail!(
+                "Failed to download the new version file: {}",
+                response.status()
+            );
+        }
+        let file_data = response.bytes()?;
+        {
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&file_path)?;
             file.write_all(&file_data)?;
+        }
+        if let Err(e) = g::dosyayi_dogrula(&bildirim, g::windows_dosya_adi(update_msi), &file_path) {
+            std::fs::remove_file(&file_path).ok();
+            bail!("Guncelleme dosyasi dogrulanamadi, kurulmadi: {}", e);
         }
         // We have checked if the `conns` is empty before, but we need to check again.
         // No need to care about the downloaded file here, because it's rare case that the `conns` are empty
         // before the download, but not empty after the download.
         if has_no_active_conns() {
-            #[cfg(target_os = "windows")]
             update_new_version(update_msi, &version, &file_path);
         }
     }
@@ -376,8 +359,8 @@ pub fn get_update_download_file_from_url(url: &str) -> Option<PathBuf> {
     let tag = segments.next()?;
     let filename = segments.next()?;
 
-    if owner != "rustdesk"
-        || repo != "rustdesk"
+    // Altunakar: yalniz kendi surumlerimizden indirilir.
+    if format!("{}/{}", owner, repo) != hbb_common::altunakar_guncelleme::DEPO
         || releases != "releases"
         || download != "download"
         || tag.is_empty()
@@ -662,29 +645,30 @@ mod tests {
     #[test]
     fn update_download_file_accepts_expected_github_asset_urls() {
         let file = get_download_file_from_url(
-            "https://github.com/rustdesk/rustdesk/releases/download/1.4.0/rustdesk-1.4.0-x86_64.dmg",
+            "https://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1.5.0-8/AltunakarDesk-Windows.msi",
         )
         .expect("valid GitHub release asset URL");
 
         assert_eq!(
             file.file_name().and_then(|name| name.to_str()),
-            Some("rustdesk-1.4.0-x86_64.dmg")
+            Some("AltunakarDesk-Windows.msi")
         );
     }
 
     #[test]
     fn update_download_file_rejects_untrusted_or_malformed_urls() {
         for url in [
-            "http://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
+            "http://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/rustdesk.exe",
             "https://example.com/rustdesk.exe",
             "https://github.com/other/project/releases/download/1/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/nested/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/C:rustdesk.exe",
-            "https://user@github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
-            "https://github.com:443/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe?download=1",
-            "https://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe#download",
+            "https://github.com/rustdesk/rustdesk/releases/download/1.4.0/rustdesk-1.4.0-x86_64.dmg",
+            "https://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/",
+            "https://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/nested/rustdesk.exe",
+            "https://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/C:rustdesk.exe",
+            "https://user@github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/rustdesk.exe",
+            "https://github.com:443/tunaegeyalcin-dev/altunakardesk/releases/download/1/rustdesk.exe",
+            "https://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/rustdesk.exe?download=1",
+            "https://github.com/tunaegeyalcin-dev/altunakardesk/releases/download/1/rustdesk.exe#download",
             "not a url",
         ] {
             assert!(get_download_file_from_url(url).is_none(), "{url}");

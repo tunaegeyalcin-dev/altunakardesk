@@ -692,14 +692,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Widget buildHelpCards(String updateUrl) {
-    if (!bind.isCustomClient() &&
-        updateUrl.isNotEmpty &&
-        !isCardClosed &&
-        bind.mainUriPrefixSync().contains('rustdesk')) {
-      final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
+    // Altunakar: surum bilgisi imzali bildirimden gelir (common.rs). Windows'ta kurulu programi
+    // tek tikla gunceller; Mac'te ve kurulmamis programda indirme sayfasini acar.
+    if (updateUrl.isNotEmpty && !isCardClosed) {
+      final isToUpdate = isWindows && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://github.com/tunaegeyalcin-dev/altunakardesk/releases');
+        final Uri url = Uri.parse('https://www.altunakar.net/uzak-destek');
         await launchUrl(url);
       };
       if (isToUpdate) {
@@ -714,9 +713,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           onPressed,
           closeButton: true,
           help: isToUpdate ? 'Changelog' : null,
-          link: isToUpdate
-              ? 'https://github.com/rustdesk/rustdesk/releases/tag/${bind.mainGetNewVersion()}'
-              : null);
+          link: isToUpdate ? updateUrl : null);
     }
     if (systemError.isNotEmpty) {
       return buildInstallCard("", systemError, "", () {});

@@ -20,7 +20,7 @@ use hbb_common::{
     config::{self, use_ws, Config, LocalConfig, CONNECT_TIMEOUT, READ_TIMEOUT, RENDEZVOUS_PORT},
     futures::future::join_all,
     futures_util::future::poll_fn,
-    get_version_number, log,
+    log,
     protobuf::{Enum, Message as _},
     rendezvous_proto::*,
     socket_client,
@@ -93,6 +93,8 @@ pub mod input {
 
 lazy_static::lazy_static! {
     pub static ref SOFTWARE_UPDATE_URL: Arc<Mutex<String>> = Default::default();
+    /// Altunakar: son dogrulanmis (imzasi gecmis) surum bildirimi; SOFTWARE_UPDATE_URL ile birlikte dolar.
+    pub static ref ALTUNAKAR_BILDIRIM: Arc<Mutex<Option<hbb_common::altunakar_guncelleme::SurumBildirimi>>> = Default::default();
     pub static ref DEVICE_ID: Arc<Mutex<String>> = Default::default();
     pub static ref DEVICE_NAME: Arc<Mutex<String>> = Default::default();
     static ref PUBLIC_IPV6_ADDR: Arc<Mutex<(Option<SocketAddr>, Option<Instant>)>> = Default::default();
@@ -1018,50 +1020,28 @@ pub fn is_modifier(evt: &KeyEvent) -> bool {
 }
 
 pub fn check_software_update() {
-    if is_custom_client() {
-        return;
-    }
     let opt = LocalConfig::get_option(keys::OPTION_ENABLE_CHECK_UPDATE);
     if config::option2bool(keys::OPTION_ENABLE_CHECK_UPDATE, &opt) {
         std::thread::spawn(move || allow_err!(do_check_software_update()));
     }
 }
 
-// No need to check `danger_accept_invalid_cert` for now.
-// Because the url is always `https://api.rustdesk.com/version/latest`.
+/// Altunakar: surum bilgisi api.rustdesk.com'dan degil, kendi GitHub surumlerimizden gelir.
+/// Son surumdeki AltunakarDesk-surum.json imzasiyla dogrulanir; imza gecmezse hicbir sey yapilmaz.
 #[tokio::main(flavor = "current_thread")]
 pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
-    let (request, url) =
-        hbb_common::version_check_request(hbb_common::VER_TYPE_RUSTDESK_CLIENT.to_string());
-    let proxy_conf = Config::get_socks();
-    let tls_url = get_url_for_tls(&url, &proxy_conf);
-    let tls_type = get_cached_tls_type(tls_url);
-    let is_tls_not_cached = tls_type.is_none();
-    let tls_type = tls_type.unwrap_or(TlsType::Rustls);
-    let client = create_http_client_async(tls_type, false);
-    let latest_release_response = match client.post(&url).json(&request).send().await {
-        Ok(resp) => {
-            upsert_tls_cache(tls_url, tls_type, false);
-            resp
-        }
-        Err(err) => {
-            if is_tls_not_cached && err.is_request() {
-                let tls_type = TlsType::NativeTls;
-                let client = create_http_client_async(tls_type, false);
-                let resp = client.post(&url).json(&request).send().await?;
-                upsert_tls_cache(tls_url, tls_type, false);
-                resp
-            } else {
-                return Err(err.into());
-            }
-        }
-    };
-    let bytes = latest_release_response.bytes().await?;
-    let resp: hbb_common::VersionCheckResponse = serde_json::from_slice(&bytes)?;
-    let response_url = resp.url;
-    let latest_release_version = response_url.rsplit('/').next().unwrap_or_default();
-
-    if get_version_number(&latest_release_version) > get_version_number(crate::VERSION) {
+    use hbb_common::altunakar_guncelleme as g;
+    async fn indir(url: &str) -> hbb_common::ResultType<Vec<u8>> {
+        let client = crate::hbbs_http::create_http_client_async_with_url_strict(url).await?;
+        let resp = client.get(url).send().await?.error_for_status()?;
+        Ok(resp.bytes().await?.to_vec())
+    }
+    let govde = indir(&g::son_bildirim_adresi(g::BILDIRIM_DOSYASI)).await?;
+    let imza = indir(&g::son_bildirim_adresi(g::IMZA_DOSYASI)).await?;
+    let bildirim = g::bildirimi_dogrula(&govde, &String::from_utf8_lossy(&imza))?;
+    if g::daha_yeni(&bildirim.etiket, g::surum()) {
+        let response_url = g::surum_sayfasi(&bildirim.etiket);
+        log::info!("Yeni surum var: {} (bu derleme {})", bildirim.etiket, g::surum());
         #[cfg(feature = "flutter")]
         {
             let mut m = HashMap::new();
@@ -1071,11 +1051,25 @@ pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
                 let _ = crate::flutter::push_global_event(crate::flutter::APP_TYPE_MAIN, data);
             }
         }
+        *ALTUNAKAR_BILDIRIM.lock().unwrap() = Some(bildirim);
         *SOFTWARE_UPDATE_URL.lock().unwrap() = response_url;
     } else {
+        *ALTUNAKAR_BILDIRIM.lock().unwrap() = None;
         *SOFTWARE_UPDATE_URL.lock().unwrap() = "".to_string();
     }
     Ok(())
+}
+
+/// Altunakar: indirilen kurulum dosyasini son dogrulanmis bildirimdeki SHA-256 ile karsilastirir.
+pub fn altunakar_dosyayi_dogrula(dosya: &std::path::Path) -> hbb_common::ResultType<()> {
+    let Some(ad) = dosya.file_name().and_then(|a| a.to_str()) else {
+        hbb_common::bail!("dosya adi okunamadi");
+    };
+    let bildirim = ALTUNAKAR_BILDIRIM.lock().unwrap().clone();
+    let Some(bildirim) = bildirim else {
+        hbb_common::bail!("dogrulanmis surum bildirimi yok");
+    };
+    hbb_common::altunakar_guncelleme::dosyayi_dogrula(&bildirim, ad, dosya)
 }
 
 #[inline]

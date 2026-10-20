@@ -2728,36 +2728,23 @@ pub fn main_get_common(key: String) -> String {
                 }
             }
         } else if key.starts_with("download-file-") {
-            let _version = key.replace("download-file-", "");
+            // Altunakar: surum etiketinden bagimsiz sabit dosya adlari (altunakar/yayinla.sh).
             #[cfg(target_os = "windows")]
-            return match (
-                crate::platform::windows::is_msi_installed(),
-                crate::common::is_custom_client(),
-            ) {
-                (Ok(true), false) => match crate::platform::windows::release_arch_suffix() {
-                    Some(arch) => format!("rustdesk-{_version}-{arch}.msi"),
-                    None => "error:unsupported".to_owned(),
-                },
-                (Ok(true), true) | (Ok(false), _) => {
-                    match crate::platform::windows::release_arch_suffix() {
-                        Some(arch) => format!("rustdesk-{_version}-{arch}.exe"),
-                        None => "error:unsupported".to_owned(),
-                    }
+            return match crate::platform::windows::is_msi_installed() {
+                Ok(msi) => {
+                    hbb_common::altunakar_guncelleme::windows_dosya_adi(msi).to_owned()
                 }
-                (Err(e), _) => {
+                Err(e) => {
                     log::error!("Failed to check if is msi: {}", e);
                     format!("error:update-failed-check-msi-tip")
                 }
             };
             #[cfg(target_os = "macos")]
             {
-                return if cfg!(target_arch = "x86_64") {
-                    format!("rustdesk-{_version}-x86_64.dmg")
-                } else if cfg!(target_arch = "aarch64") {
-                    format!("rustdesk-{_version}-aarch64.dmg")
-                } else {
-                    "error:unsupported".to_owned()
-                };
+                return hbb_common::altunakar_guncelleme::mac_dosya_adi(cfg!(
+                    target_arch = "aarch64"
+                ))
+                .to_owned();
             }
             #[cfg(not(any(target_os = "windows", target_os = "macos")))]
             {
@@ -2838,6 +2825,11 @@ pub fn main_set_common(_key: String, _value: String) {
                     "New version file is downloaded, update begin, {:?}",
                     new_version_file.to_str()
                 );
+                if let Err(e) = crate::common::altunakar_dosyayi_dogrula(&new_version_file) {
+                    log::error!("Guncelleme dosyasi dogrulanamadi, kurulmadi: {}", e);
+                    std::fs::remove_file(&new_version_file).ok();
+                    return;
+                }
                 if let Some(f) = new_version_file.to_str() {
                     // 1.4.0 does not support "--update"
                     // But we can assume that the new version supports it.
@@ -2858,7 +2850,10 @@ pub fn main_set_common(_key: String, _value: String) {
             #[cfg(target_os = "macos")]
             {
                 if let Some(new_version_file) = get_download_file_from_url(&_value) {
-                    if let Some(f) = new_version_file.to_str() {
+                    if let Err(e) = crate::common::altunakar_dosyayi_dogrula(&new_version_file) {
+                        log::error!("Guncelleme dosyasi dogrulanamadi: {}", e);
+                        std::fs::remove_file(&new_version_file).ok();
+                    } else if let Some(f) = new_version_file.to_str() {
                         crate::platform::macos::extract_update_dmg(f);
                     } else {
                         // unreachable!()

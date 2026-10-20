@@ -35,6 +35,8 @@ env:
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
+  # Altunakar: programa gomulen surum (guncelleme denetimi bununla karsilastirir; hbb_common::altunakar_guncelleme)
+  ALTUNAKAR_SURUM: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # vcpkg version: 2026.07.29
   # If we change the `VCPKG COMMIT_ID`, please remember:
