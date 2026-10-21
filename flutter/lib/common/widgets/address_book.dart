@@ -6,6 +6,7 @@ import 'package:dynamic_layouts/dynamic_layouts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/common/hbbs/hbbs.dart';
+import 'package:flutter_hbb/common/widgets/altunakar_firmalar.dart';
 import 'package:flutter_hbb/common/widgets/peer_card.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -96,7 +97,7 @@ class _AddressBookState extends State<AddressBook> {
                       child: Container(
                         width: double.infinity,
                         height: double.infinity,
-                        child: _buildTags(),
+                        child: _altunakarSolPanel(),
                       ),
                     ),
                     _buildAbPermission(),
@@ -130,7 +131,7 @@ class _AddressBookState extends State<AddressBook> {
                     _buildTagHeader().marginOnly(left: 8.0, right: 0),
                     Container(
                       width: double.infinity,
-                      child: _buildTags(),
+                      child: LimitedBox(maxHeight: 260, child: _altunakarSolPanel()),
                     ),
                   ],
                 ),
@@ -313,6 +314,14 @@ class _AddressBookState extends State<AddressBook> {
             child: build_more(context, invert: true)),
       ],
     );
+  }
+
+  // Altunakar: ortak defterde etiket izgarasi yerine acilir-kapanir firma
+  // listesi (firma = etiket). Baska defter (eski/kisisel) olursa eski izgara.
+  Widget _altunakarSolPanel() {
+    return Obx(() => gFFI.abModel.currentName.value == kAltunakarEkipDefteri
+        ? const AltunakarFirmaListesi()
+        : _buildTags());
   }
 
   Widget _buildTags() {

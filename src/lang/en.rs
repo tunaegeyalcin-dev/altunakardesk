@@ -283,5 +283,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar-sign-out-tip", "The user on the remote computer is signed out; unsaved work may be lost. The connection drops briefly, then reconnects to the sign-in screen by itself."),
         ("altunakar_dogrulandi", "Altunakar technician (verified)"),
         ("altunakar_dogrulanmadi", "Unverified connection: not verified as an Altunakar technician. Do not allow someone you do not know."),
+        ("altunakar_tum_firmalar", "All companies"),
     ].iter().cloned().collect();
 }
