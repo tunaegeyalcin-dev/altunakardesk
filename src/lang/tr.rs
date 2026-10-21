@@ -792,5 +792,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_dogrulandi", "Altunakar teknisyeni (doğrulandı)"),
         ("altunakar_dogrulanmadi", "Doğrulanmamış bağlantı: Altunakar teknisyeni olduğu doğrulanamadı. Tanımadığınız birine izin vermeyin."),
         ("altunakar_tum_firmalar", "Tüm firmalar"),
+        ("altunakar_hesap_iste", "Hesabınız yok mu? Hesap isteyin"),
+        ("altunakar_sifremi_unuttum", "Şifremi unuttum"),
     ].iter().cloned().collect();
 }

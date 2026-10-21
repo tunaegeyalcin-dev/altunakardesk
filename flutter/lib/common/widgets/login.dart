@@ -11,6 +11,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../common.dart';
+import './altunakar_hesap.dart';
 import './dialog.dart';
 import './oidc_auth_status.dart';
 
@@ -986,6 +987,7 @@ Future<bool?> _openLoginDialog() async {
             userFocusNode: userFocusNode,
           ),
           thirdAuthWidget(),
+          const AltunakarHesapBaglantilari(),
         ],
       ),
       onCancel: onDialogCancel,

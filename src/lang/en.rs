@@ -284,5 +284,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_dogrulandi", "Altunakar technician (verified)"),
         ("altunakar_dogrulanmadi", "Unverified connection: not verified as an Altunakar technician. Do not allow someone you do not know."),
         ("altunakar_tum_firmalar", "All companies"),
+        ("altunakar_hesap_iste", "No account? Request one"),
+        ("altunakar_sifremi_unuttum", "Forgot password"),
     ].iter().cloned().collect();
 }
