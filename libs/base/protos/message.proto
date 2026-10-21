@@ -84,6 +84,7 @@ message LoginRequest {
   string my_platform = 13;
   bytes hwid = 14;
   string avatar = 17;
+  string altunakar_bilet = 100; // Altunakar: ekip sunucusu dogrulama bileti (Asama 2)
 }
 
 message Terminal {

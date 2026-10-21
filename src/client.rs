@@ -2901,6 +2901,9 @@ pub struct LoginConfigHandler {
     pub peer_info: Option<PeerInfo>,
     password_source: PasswordSource, // where the sent password comes from
     shared_password: Option<String>, // Store the shared password
+    /// Altunakar: ekip sunucusundan alinan dogrulama bileti; `None` = istek suruyor.
+    altunakar_bilet: Arc<Mutex<Option<String>>>,
+    altunakar_bilet_istendi: bool,
     pub enable_trusted_devices: bool,
     pub record_state: bool,
     pub record_permission: bool,
@@ -3030,6 +3033,7 @@ impl LoginConfigHandler {
         let is_terminal_admin = conn_type == ConnType::TERMINAL
             && std::env::var("IS_TERMINAL_ADMIN").map_or(false, |v| v == "Y");
         self.is_terminal_admin = is_terminal_admin;
+        self.altunakar_bilet_iste();
     }
 
     #[cfg(feature = "flutter")]
@@ -3788,6 +3792,49 @@ impl LoginConfigHandler {
         serde_json::to_string::<HashMap<String, String>>(&x).unwrap_or_default()
     }
 
+    /// Altunakar: girisli teknisyen baglanmadan once ekip sunucusundan dogrulama
+    /// bileti ister (arka planda). Girissizse istenmez; baglanti engellenmez.
+    fn altunakar_bilet_iste(&mut self) {
+        self.altunakar_bilet = Arc::new(Mutex::new(None));
+        self.altunakar_bilet_istendi = false;
+        let jeton = LocalConfig::get_option("access_token");
+        if jeton.is_empty() || self.id.is_empty() {
+            return;
+        }
+        self.altunakar_bilet_istendi = true;
+        let yuva = self.altunakar_bilet.clone();
+        let (kaynak, hedef) = (Config::get_id(), self.id.clone());
+        std::thread::spawn(move || {
+            let url = crate::ui_interface::get_api_server() + "/api/altunakar/bilet";
+            let govde = hbb_common::altunakar::bilet_istegi(&kaynak, &hedef);
+            let baslik = format!("Authorization: Bearer {}", jeton);
+            let bilet = crate::post_request_sync(url, govde, &baslik)
+                .ok()
+                .and_then(|y| hbb_common::altunakar::bilet_yanitindan(&y))
+                .unwrap_or_default();
+            *yuva.lock().unwrap() = Some(bilet);
+        });
+    }
+
+    /// Altunakar: bileti en cok `sure` kadar bekler; gelmezse bos doner (karsi
+    /// tarafta "dogrulanmamis" uyarisi cikar). Istek oturum acilisinda basladigi
+    /// icin cogu zaman beklemeden hazirdir.
+    fn altunakar_bilet_bekle(&self, sure: std::time::Duration) -> String {
+        if !self.altunakar_bilet_istendi {
+            return String::new();
+        }
+        let son = std::time::Instant::now() + sure;
+        loop {
+            if let Some(b) = self.altunakar_bilet.lock().unwrap().clone() {
+                return b;
+            }
+            if std::time::Instant::now() >= son {
+                return String::new();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    }
+
     /// Create a [`Message`] for login.
     fn create_login_msg(
         &self,
@@ -3869,6 +3916,7 @@ impl LoginConfigHandler {
         } else {
             Default::default()
         };
+        let altunakar_bilet = self.altunakar_bilet_bekle(std::time::Duration::from_secs(2));
         let mut lr = LoginRequest {
             username: pure_id,
             password: password.into(),
@@ -3881,6 +3929,7 @@ impl LoginConfigHandler {
             os_login,
             hwid,
             avatar,
+            altunakar_bilet,
             ..Default::default()
         };
         match self.conn_type {

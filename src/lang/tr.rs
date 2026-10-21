@@ -789,5 +789,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Sign out", "Oturumu kapat"),
         ("altunakar-switch-user-tip", "Karşı bilgisayardaki oturum ayrılır ve Windows giriş ekranı gelir; açık programlar kapanmaz. Bağlantı kısa süre kopar, sonra kendiliğinden yeniden bağlanılır."),
         ("altunakar-sign-out-tip", "Karşı bilgisayardaki kullanıcı oturumu kapatılır; kaydedilmemiş işler kaybolabilir. Bağlantı kısa süre kopar, sonra giriş ekranına kendiliğinden yeniden bağlanılır."),
+        ("altunakar_dogrulandi", "Altunakar teknisyeni (doğrulandı)"),
+        ("altunakar_dogrulanmadi", "Doğrulanmamış bağlantı: Altunakar teknisyeni olduğu doğrulanamadı. Tanımadığınız birine izin vermeyin."),
     ].iter().cloned().collect();
 }

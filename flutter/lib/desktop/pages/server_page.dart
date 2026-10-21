@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
+import 'package:flutter_hbb/common/widgets/altunakar_dogrulama.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
@@ -496,6 +497,7 @@ class _CmHeaderState extends State<_CmHeader>
                     style: TextStyle(color: Color(0xFF5C6775), fontSize: 13),
                   ),
                 ),
+                altunakarDogrulamaRozeti(client.altunakarTeknisyen),
                 if (client.type_() == ClientType.terminal)
                   FittedBox(
                     child: Text(

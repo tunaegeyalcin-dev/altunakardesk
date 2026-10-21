@@ -818,6 +818,7 @@ class Client {
   bool fromSwitch = false;
   bool inVoiceCall = false;
   bool incomingVoiceCall = false;
+  String altunakarTeknisyen = ''; // Altunakar: dogrulanmis teknisyen adi
 
   RxInt unreadChatMessageCount = 0.obs;
 
@@ -842,6 +843,7 @@ class Client {
     restart = json['restart'];
     recording = json['recording'];
     blockInput = json['block_input'];
+    altunakarTeknisyen = json['altunakar_teknisyen'] ?? '';
     privacyMode = json['privacy_mode'] ?? privacyMode;
     disconnected = json['disconnected'];
     fromSwitch = json['from_switch'];
@@ -852,6 +854,7 @@ class Client {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['id'] = id;
+    data['altunakar_teknisyen'] = altunakarTeknisyen;
     data['authorized'] = authorized;
     data['is_file_transfer'] = isFileTransfer;
     data['is_view_camera'] = isViewCamera;

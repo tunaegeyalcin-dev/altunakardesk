@@ -341,6 +341,8 @@ pub enum Data {
         block_input: bool,
         privacy_mode: bool,
         from_switch: bool,
+        #[serde(default)]
+        altunakar_teknisyen: String,
     },
     ChatMessage {
         text: String,

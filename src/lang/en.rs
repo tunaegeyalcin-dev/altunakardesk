@@ -281,5 +281,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("relay-fallback-delay-tip", "How long a relay connection that is already up waits for the direct WebRTC connection before it is used instead. Raise it to give a slow direct connection more time to win; lower it to settle on the relay sooner on networks where a direct connection cannot be made. Leave empty for the default of 2.5 seconds."),
         ("altunakar-switch-user-tip", "The session on the remote computer is disconnected and the Windows sign-in screen appears; open programs keep running. The connection drops briefly, then reconnects by itself."),
         ("altunakar-sign-out-tip", "The user on the remote computer is signed out; unsaved work may be lost. The connection drops briefly, then reconnects to the sign-in screen by itself."),
+        ("altunakar_dogrulandi", "Altunakar technician (verified)"),
+        ("altunakar_dogrulanmadi", "Unverified connection: not verified as an Altunakar technician. Do not allow someone you do not know."),
     ].iter().cloned().collect();
 }

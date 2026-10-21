@@ -421,6 +421,8 @@ pub struct Connection {
     #[cfg(windows)]
     portable: PortableState,
     from_switch: bool,
+    /// Altunakar: bileti dogrulanan teknisyenin adi (Asama 2); None = dogrulanmamis.
+    altunakar_teknisyen: Option<String>,
     voice_call_request_timestamp: Option<NonZeroI64>,
     voice_calling: bool,
     options_in_login: Option<OptionMessage>,
@@ -626,6 +628,7 @@ impl Connection {
             #[cfg(windows)]
             portable: Default::default(),
             from_switch: false,
+            altunakar_teknisyen: None,
             audio_sender: None,
             voice_call_request_timestamp: None,
             voice_calling: false,
@@ -1922,6 +1925,9 @@ impl Connection {
             .map(|s| s.last_recv_time.clone());
         self.normalize_conn_audit_auth_fields();
         let mut audit = json!({"peer": ((&self.lr.my_id, &self.lr.my_name)), "type": conn_type});
+        if let Some(ad) = &self.altunakar_teknisyen {
+            audit["altunakar_teknisyen"] = json!(ad);
+        }
         if self.conn_audit_primary_auth != ConnAuditPrimaryAuth::None {
             audit["primary_auth"] = json!(self.conn_audit_primary_auth.as_i64());
         }
@@ -2360,6 +2366,7 @@ impl Connection {
             block_input: self.block_input,
             privacy_mode: self.privacy_mode,
             from_switch: self.from_switch,
+            altunakar_teknisyen: self.altunakar_teknisyen.clone().unwrap_or_default(),
         });
     }
 
@@ -2863,6 +2870,16 @@ impl Connection {
             if !self.check_login_scope(&lr).await {
                 return false;
             }
+            // Altunakar: ekip sunucusunun imzali bileti dogrulanirsa istek
+            // penceresinde "Altunakar teknisyeni (dogrulandi)" gorunur. Ad,
+            // baglananin kendi yazdigi my_name DEGIL, biletteki addir.
+            self.altunakar_teknisyen = hbb_common::altunakar::bilet_dogrula(
+                &lr.altunakar_bilet,
+                hbb_common::altunakar::EKIP_BILET_PK,
+                &lr.my_id,
+                &Config::get_id(),
+                hbb_common::get_time() / 1000,
+            );
             self.awaiting_2fa = false;
             self.handle_login_request_without_validation(&lr).await;
             if self.authorized {
