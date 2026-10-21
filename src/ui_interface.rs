@@ -1499,7 +1499,8 @@ pub async fn change_id_shared(id: String, old_id: String) -> String {
 }
 
 /// Altunakar: bilgisayar numarasi kurulumda donanimdan bir kez verilir ve degistirilemez.
-pub const ALTUNAKAR_ID_DEGISMEZ: &str = "Bu bilgisayarın numarası kurulumda verilir ve değiştirilemez.";
+/// Ceviri anahtari: arayuz durumu translate() ile gosterir (dialog.dart changeIdDialog).
+pub const ALTUNAKAR_ID_DEGISMEZ: &str = "altunakar_id_degismez";
 const ALTUNAKAR_ID_SABIT: bool = true;
 
 pub async fn change_id_shared_(id: String, old_id: String) -> &'static str {

@@ -6,6 +6,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/common/widgets/altunakar_hesap.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -145,11 +146,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           const Spacer(),
           Container(height: 1, color: Colors.white.withOpacity(0.08))
               .marginOnly(bottom: 12),
-          const Text('Destek hattı',
-                  style: TextStyle(color: Color(0xFF8E99A8), fontSize: 12))
+          Text(translate('altunakar_destek_hatti'),
+                  style: const TextStyle(color: Color(0xFF8E99A8), fontSize: 12))
               .marginOnly(left: 10),
-          const Text('0530 338 21 91',
-                  style: TextStyle(
+          Text(translate('altunakar_destek_tel'),
+                  style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w600))
@@ -216,7 +217,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          etiket('Bu bilgisayarın numarası'),
+          etiket(translate('altunakar_bu_bilgisayarin_numarasi')),
           Row(mainAxisSize: MainAxisSize.min, children: [
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: model.serverId,
@@ -698,7 +699,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final isToUpdate = isWindows && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://www.altunakar.net/uzak-destek');
+        final Uri url = Uri.parse(
+            'https://www.altunakar.net/uzak-destek${altunakarSiteDiliEki()}');
         await launchUrl(url);
       };
       if (isToUpdate) {

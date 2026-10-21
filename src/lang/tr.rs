@@ -830,5 +830,12 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_hesap_olustur", "Hesabınız yok mu? Hesap oluşturun"),
         ("altunakar_kullanici_ya_da_eposta", "Kullanıcı adı ya da e-posta"),
         ("altunakar_sifremi_unuttum", "Şifremi unuttum"),
+        ("altunakar_destek_hatti", "Destek hattı"),
+        ("altunakar_destek_tel", "0530 338 21 91"),
+        ("altunakar_bu_bilgisayarin_numarasi", "Bu bilgisayarın numarası"),
+        ("altunakar_tabani", "Temel aldığı yazılım"),
+        ("altunakar_kaynak_kod", "Kaynak kod"),
+        ("altunakar_id_degismez", "Bu bilgisayarın numarası kurulumda verilir ve değiştirilemez."),
+        ("altunakar_site_dili", "tr"),
     ].iter().cloned().collect();
 }

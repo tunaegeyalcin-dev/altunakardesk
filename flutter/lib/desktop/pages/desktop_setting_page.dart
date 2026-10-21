@@ -2580,7 +2580,7 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'AltunakarDesk © ${DateTime.now().toString().substring(0, 4)} Altunakar Bilgisayar\nRustDesk tabanlıdır: Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd. (GNU AGPL-3.0)\nKaynak kod: https://github.com/tunaegeyalcin-dev/altunakardesk\n$license',
+                            'AltunakarDesk © ${DateTime.now().toString().substring(0, 4)} Altunakar Bilgisayar\n${translate('altunakar_tabani')}: RustDesk, Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd. (GNU AGPL-3.0)\n${translate('altunakar_kaynak_kod')}: https://github.com/tunaegeyalcin-dev/altunakardesk\n$license',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(

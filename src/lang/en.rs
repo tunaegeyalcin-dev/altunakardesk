@@ -1,7 +1,7 @@
 lazy_static::lazy_static! {
 pub static ref T: std::collections::HashMap<&'static str, &'static str> =
     [
-        ("desk_tip", "Your desktop can be accessed with this ID and password."),
+        ("desk_tip", "When Altunakar support calls you, provide this ID and password."),
         ("connecting_status", "Connecting to the RustDesk network..."),
         ("not_ready_status", "Not ready. Please check your connection"),
         ("ID/Relay Server", "ID/Relay server"),
@@ -33,7 +33,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Insert Lock", "Insert lock"),
         ("Set Password", "Set password"),
         ("OS Password", "OS password"),
-        ("install_tip", "Due to UAC, RustDesk can not work properly as the remote side in some cases. To avoid UAC, please click the button below to install RustDesk to the system."),
+        ("install_tip", "Install AltunakarDesk on this computer: it starts automatically with Windows and also works in administrator windows and on the sign-in screen."),
         ("config_acc", "In order to control your Desktop remotely, you need to grant RustDesk \"Accessibility\" permissions."),
         ("config_screen", "In order to access your Desktop remotely, you need to grant RustDesk \"Screen Recording\" permissions."),
         ("Installation Path", "Installation path"),
@@ -322,5 +322,14 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_hesap_olustur", "No account? Create one"),
         ("altunakar_kullanici_ya_da_eposta", "Username or email"),
         ("altunakar_sifremi_unuttum", "Forgot password"),
+        ("Your Desktop", "This computer"),
+        ("Control Remote Desktop", "Connect to another computer"),
+        ("altunakar_destek_hatti", "Support line"),
+        ("altunakar_destek_tel", "+90 530 338 21 91"),
+        ("altunakar_bu_bilgisayarin_numarasi", "This computer's ID"),
+        ("altunakar_tabani", "Based on"),
+        ("altunakar_kaynak_kod", "Source code"),
+        ("altunakar_id_degismez", "This computer's ID is assigned during installation and cannot be changed."),
+        ("altunakar_site_dili", "en"),
     ].iter().cloned().collect();
 }

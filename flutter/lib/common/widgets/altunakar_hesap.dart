@@ -7,6 +7,14 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Program arayuzunun dili urun sitesine `?lang=` ile tasinir (site TR/EN/DE).
+/// `altunakar_site_dili` yalniz tr/de cevirilerinde farkli; diger diller
+/// Ingilizceye duser (lang.rs), Turkce varsayilan oldugu icin ek yok.
+String altunakarSiteDiliEki() {
+  final dil = translate('altunakar_site_dili');
+  return (dil == 'en' || dil == 'de') ? '?lang=$dil' : '';
+}
+
 class AltunakarHesapBaglantilari extends StatelessWidget {
   const AltunakarHesapBaglantilari({Key? key}) : super(key: key);
 
@@ -14,7 +22,8 @@ class AltunakarHesapBaglantilari extends StatelessWidget {
     final kok = (await bind.mainGetApiServer()).trim();
     if (kok.isEmpty) return;
     try {
-      await launchUrl(Uri.parse('$kok$yol'), mode: LaunchMode.externalApplication);
+      await launchUrl(Uri.parse('$kok$yol${altunakarSiteDiliEki()}'),
+          mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('hesap sayfasi acilamadi: $e');
     }
