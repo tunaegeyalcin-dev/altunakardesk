@@ -14,7 +14,6 @@ import 'package:flutter_hbb/common/altunakar_arama.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/common/widgets/address_book.dart';
 import 'package:flutter_hbb/common/widgets/peer_card.dart';
-import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/models/ab_model.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 import 'package:flutter_hbb/models/peer_tab_model.dart';
@@ -56,12 +55,14 @@ class AltunakarDefterGorunumu extends StatefulWidget {
 
 class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
   Timer? _zamanlayici;
-  late final TextEditingController _arama;
+  // Arama yerel: genel peerSearchText kullanilsaydi defterde yazilan arama
+  // ust cubugu gizli oldugu icin gorunmeden Son baglantilar sekmesini suzerdi.
+  final _arama = TextEditingController();
+  final _aramaMetni = ''.obs;
 
   @override
   void initState() {
     super.initState();
-    _arama = TextEditingController(text: peerSearchText.value);
     _cevrimiciSor();
     _zamanlayici = Timer.periodic(const Duration(seconds: 30), (_) => _cevrimiciSor());
     gFFI.abModel.peersModel.addListener(_yenile);
@@ -100,7 +101,7 @@ class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
 
   void _aramayiTemizle() {
     _arama.clear();
-    peerSearchText.value = '';
+    _aramaMetni.value = '';
   }
 
   static bool _firmada(Peer p, String ad) =>
@@ -109,7 +110,7 @@ class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final arama = peerSearchText.value.trim();
+      final arama = _aramaMetni.value.trim();
       final peers = gFFI.abModel.currentAbPeers.toList();
       final firmalar = gFFI.abModel.currentAbTags.map((e) => e.toString()).toList()
         ..sort((a, b) => altunakarKatla(a).compareTo(altunakarKatla(b)));
@@ -419,7 +420,7 @@ class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
           height: 36,
           child: TextField(
             controller: _arama,
-            onChanged: (v) => peerSearchText.value = v,
+            onChanged: (v) => _aramaMetni.value = v,
             style: const TextStyle(fontSize: 13.5),
             decoration: InputDecoration(
               isDense: true,

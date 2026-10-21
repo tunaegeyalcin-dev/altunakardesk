@@ -555,25 +555,33 @@ class _PeerTabPageState extends State<PeerTabPage>
         });
   }
 
+  // Altunakar: adres defterinin yeni gorunumunde (altunakar_firmalar.dart) arama,
+  // siralama ve satir duzeni gorunumun kendi icinde; ust cubuktaki ikizleri
+  // (arama, coklu secim, gorunum turu, siralama, etiket paneli) orada islemez.
+  bool _altunakarYeniDefter(PeerTabModel model) =>
+      model.currentTab == PeerTabIndex.ab.index &&
+      !gFFI.abModel.legacyMode.value;
+
   List<Widget> _landscapeRightActions(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
+    final yeniDefter = _altunakarYeniDefter(model);
     return [
-      const PeerSearchBar().marginOnly(right: 13),
+      if (!yeniDefter) const PeerSearchBar().marginOnly(right: 13),
       _createRefresh(
           index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
       _createRefresh(
           index: PeerTabIndex.group, loading: gFFI.groupModel.groupLoading),
       Offstage(
-        offstage: model.currentTabCachedPeers.isEmpty,
+        offstage: model.currentTabCachedPeers.isEmpty || yeniDefter,
         child: _createMultiSelection(),
       ),
-      _createPeerViewTypeSwitch(context),
+      if (!yeniDefter) _createPeerViewTypeSwitch(context),
       Offstage(
-        offstage: model.currentTab == PeerTabIndex.recent.index,
+        offstage: model.currentTab == PeerTabIndex.recent.index || yeniDefter,
         child: PeerSortDropdown(),
       ),
       Offstage(
-        offstage: model.currentTab != PeerTabIndex.ab.index,
+        offstage: model.currentTab != PeerTabIndex.ab.index || yeniDefter,
         child: _toggleTags(),
       ),
     ];
@@ -623,9 +631,10 @@ class _PeerTabPageState extends State<PeerTabPage>
       );
     }
 
+    final yeniDefter = _altunakarYeniDefter(model);
     // Always show search, refresh
     List<Widget> actions = [
-      const PeerSearchBar(),
+      if (!yeniDefter) const PeerSearchBar(),
       if (model.currentTab == PeerTabIndex.ab.index)
         _createRefresh(
             index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
@@ -634,9 +643,11 @@ class _PeerTabPageState extends State<PeerTabPage>
             index: PeerTabIndex.group, loading: gFFI.groupModel.groupLoading),
     ];
     final List<Widget> dynamicActions = [
-      if (model.currentTabCachedPeers.isNotEmpty) _createMultiSelection(),
-      if (model.currentTab != PeerTabIndex.recent.index) PeerSortDropdown(),
-      if (model.currentTab == PeerTabIndex.ab.index) _toggleTags()
+      if (model.currentTabCachedPeers.isNotEmpty && !yeniDefter)
+        _createMultiSelection(),
+      if (model.currentTab != PeerTabIndex.recent.index && !yeniDefter)
+        PeerSortDropdown(),
+      if (model.currentTab == PeerTabIndex.ab.index && !yeniDefter) _toggleTags()
     ];
     final rightWidth = availableWidth -
         searchWidth -
