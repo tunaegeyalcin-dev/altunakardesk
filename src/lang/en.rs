@@ -319,6 +319,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_bos_arama_baslik", "No devices match your search"),
         ("altunakar_bos_arama_metin", "Try a different company name, person or ID."),
         ("altunakar_hesap_iste", "No account? Request one"),
+        ("altunakar_hesap_olustur", "No account? Create one"),
+        ("altunakar_kullanici_ya_da_eposta", "Username or email"),
         ("altunakar_sifremi_unuttum", "Forgot password"),
     ].iter().cloned().collect();
 }

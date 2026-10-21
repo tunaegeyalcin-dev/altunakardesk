@@ -162,10 +162,17 @@ class AbModel {
         if (_personalAbGuid != null) {
           debugPrint("pull ab list");
           List<AbProfile> abProfiles = List.empty(growable: true);
-          // Altunakar: kisisel defter gosterilmez; butun cihazlar ortak defterde,
-          // butun teknisyenler ayni listeyi gorur (sunucu kisisel deftere yazmaz).
           // get all address book name
           await _getSharedAbProfiles(abProfiles, quiet: quiet);
+          // Altunakar: ekip hesabinda kisisel defter gosterilmez (butun cihazlar
+          // ortak defterde, butun teknisyenler ayni listeyi gorur); kisisel
+          // hesapta ortak defter yoktur, tek defter kisinin kendi defteridir.
+          if (!abProfiles.any((e) => e.name == kAltunakarEkipDefteri)) {
+            abProfiles.insert(
+                0,
+                AbProfile(_personalAbGuid!, _personalAddressBookName,
+                    gFFI.userModel.userName.value, null, ShareRule.read.value, null));
+          }
           addressbooks.removeWhere((key, value) =>
               abProfiles.firstWhereOrNull((e) => e.name == key) == null);
           for (int i = 0; i < abProfiles.length; i++) {
@@ -192,7 +199,9 @@ class AbModel {
         if (!addressbooks.containsKey(_currentName.value)) {
           setCurrentName(legacyMode.value
               ? _legacyAddressBookName
-              : kAltunakarEkipDefteri);
+              : addressbooks.containsKey(kAltunakarEkipDefteri)
+                  ? kAltunakarEkipDefteri
+                  : _personalAddressBookName);
         }
         // pull current address book
         await current.pullAb(quiet: quiet);

@@ -1,6 +1,7 @@
-// Altunakar: giris penceresinde "Hesap isteyin" ve "Sifremi unuttum"
-// baglantilari (tasarim 3.5). Hesabi yonetici acar; bu sayfalar istegi ekip
-// sunucusu uzerinden yoneticiye iletir, tarayicida acilir.
+// Altunakar: giris penceresinde "Hesap olusturun" ve "Sifremi unuttum"
+// baglantilari (tasarim 3.5, 3.6). Ekip sunucusu adresleri tarayicida
+// www.altunakar.net/uzak-destek'teki hesap sayfalarina yonlendirir; orada
+// kisisel hesap aninda acilir, ekip hesabi yonetici onayiyla istenir.
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
@@ -31,10 +32,10 @@ class AltunakarHesapBaglantilari extends StatelessWidget {
         runSpacing: 6,
         children: [
           InkWell(
-              onTap: () => _ac('/hesap-iste'),
-              child: Text(translate('altunakar_hesap_iste'), style: stil)),
+              onTap: () => _ac('/hesap-olustur'),
+              child: Text(translate('altunakar_hesap_olustur'), style: stil)),
           InkWell(
-              onTap: () => _ac('/sifremi-unuttum'),
+              onTap: () => _ac('/hesap-sifre'),
               child: Text(translate('altunakar_sifremi_unuttum'), style: stil)),
         ],
       ),

@@ -659,7 +659,8 @@ class LoginWidgetUserPass extends StatelessWidget {
           children: [
             const SizedBox(height: 8.0),
             DialogTextField(
-                title: translate(DialogTextField.kUsernameTitle),
+                // Altunakar: kisisel hesap e-postayla, ekip hesabi kullanici adiyla girer.
+                title: translate('altunakar_kullanici_ya_da_eposta'),
                 controller: username,
                 focusNode: userFocusNode,
                 prefixIcon: DialogTextField.kUsernameIcon,
