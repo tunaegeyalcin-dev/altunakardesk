@@ -455,10 +455,18 @@ impl Client {
         }
 
         let other_server = interface.get_lch().read().unwrap().other_server.clone();
+        // Altunakar: hesap jetonu (access_token) merkeze (hbbs) GONDERILMEZ. Merkezimiz acik
+        // kaynak hbbs 1.1.16: jetonu kullanmaz ve anahtar degisimi (KeyExchange) yapmaz.
+        // Jeton gitseydi istemci secure_tcp'de sunucunun KeyExchange'ini READ_TIMEOUT boyunca
+        // bekler, "Failed to secure tcp: deadline has elapsed" ile duserdi (hesapla giris
+        // yapmis her bilgisayarda butun baglantilar, 2026-10-21); ustelik jeton
+        // PunchHoleRequest/RequestRelay icinde sifresiz giderdi. Jeton yalniz ekip sunucusuna
+        // (HTTPS API, teknisyen bileti) gider; buradaki her kullanim merkez icindir.
+        let _ = token;
         let (peer, other_server, key, token) = if let Some((a, b, c)) = other_server.as_ref() {
             (a.as_ref(), b.as_ref(), c.as_ref(), "")
         } else {
-            (peer, "", key, token)
+            (peer, "", key, "")
         };
         let (rendezvous_server, servers, contained) = if other_server.is_empty() {
             crate::get_rendezvous_server(1_000).await
