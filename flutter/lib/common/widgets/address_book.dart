@@ -6,6 +6,7 @@ import 'package:dynamic_layouts/dynamic_layouts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/common/hbbs/hbbs.dart';
+import 'package:flutter_hbb/common/altunakar_arama.dart';
 import 'package:flutter_hbb/common/widgets/altunakar_firmalar.dart';
 import 'package:flutter_hbb/common/widgets/peer_card.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
@@ -64,9 +65,11 @@ class _AddressBookState extends State<AddressBook> {
                   retry: null, // remove retry
                   close: () => gFFI.abModel.currentAbPushError.value = ''),
               Expanded(
-                child: Obx(() => stateGlobal.isPortrait.isTrue
-                    ? _buildAddressBookPortrait()
-                    : _buildAddressBookLandscape()),
+                child: Obx(() => !gFFI.abModel.legacyMode.value
+                    ? _altunakarGorunum()
+                    : stateGlobal.isPortrait.isTrue
+                        ? _buildAddressBookPortrait()
+                        : _buildAddressBookLandscape()),
               ),
             ],
           );
@@ -97,7 +100,7 @@ class _AddressBookState extends State<AddressBook> {
                       child: Container(
                         width: double.infinity,
                         height: double.infinity,
-                        child: _altunakarSolPanel(),
+                        child: _buildTags(),
                       ),
                     ),
                     _buildAbPermission(),
@@ -131,7 +134,7 @@ class _AddressBookState extends State<AddressBook> {
                     _buildTagHeader().marginOnly(left: 8.0, right: 0),
                     Container(
                       width: double.infinity,
-                      child: LimitedBox(maxHeight: 260, child: _altunakarSolPanel()),
+                      child: _buildTags(),
                     ),
                   ],
                 ),
@@ -316,13 +319,14 @@ class _AddressBookState extends State<AddressBook> {
     );
   }
 
-  // Altunakar: ortak defterde etiket izgarasi yerine acilir-kapanir firma
-  // listesi (firma = etiket). Baska defter (eski/kisisel) olursa eski izgara.
-  Widget _altunakarSolPanel() {
-    return Obx(() => gFFI.abModel.currentName.value == kAltunakarEkipDefteri
-        ? const AltunakarFirmaListesi()
-        : _buildTags());
-  }
+  // Altunakar: eski API disindaki her defter (ekip ve kisisel) firma paneli +
+  // cihaz tablosuyla cizilir (altunakar_firmalar.dart).
+  Widget _altunakarGorunum() => AltunakarDefterGorunumu(
+        cihazEkle: addIdToCurrentAb,
+        firmaEkle: abAddTag,
+        defterSecici: _buildAbDropdown(),
+        yetki: _buildAbPermission(),
+      );
 
   Widget _buildTags() {
     return Obx(() {
@@ -477,7 +481,10 @@ class _AddressBookState extends State<AddressBook> {
     TextEditingController passwordController = TextEditingController(text: '');
     TextEditingController noteController = TextEditingController(text: '');
     final tags = List.of(gFFI.abModel.currentAbTags);
-    var selectedTag = List<dynamic>.empty(growable: true).obs;
+    // Altunakar: acik firma yeni cihazin firmasi olarak onceden secili gelir.
+    var selectedTag = List<dynamic>.from(
+            gFFI.abModel.selectedTags.where((t) => t != kUntagged))
+        .obs;
     final style = TextStyle(fontSize: 14.0);
     String? errorMsg;
     final isCurrentAbShared = !gFFI.abModel.current.isPersonal();
@@ -691,6 +698,7 @@ class _AddressBookState extends State<AddressBook> {
     var msg = "";
     var isInProgress = false;
     TextEditingController controller = TextEditingController(text: field);
+    final ekip = gFFI.abModel.currentName.value == kAltunakarEkipDefteri;
     gFFI.dialogManager.show((setState, close, context) {
       submit() async {
         setState(() {
@@ -701,7 +709,20 @@ class _AddressBookState extends State<AddressBook> {
         if (field.isEmpty) {
           // pass
         } else {
-          final tags = field.trim().split(RegExp(r"[\s,;\n]+"));
+          // Altunakar: ekip defterinde firma adi boşluk içerebilir ("Mert
+          // Eczanesi"); tek ad olarak eklenir, aynı firma ikinci kez açılmaz.
+          final tags = ekip
+              ? [field.replaceAll(RegExp(r"\s+"), ' ')]
+              : field.trim().split(RegExp(r"[\s,;\n]+"));
+          if (ekip &&
+              gFFI.abModel.currentAbTags.any((t) =>
+                  altunakarKatla(t.toString()) == altunakarKatla(tags.first))) {
+            setState(() {
+              msg = 'altunakar_firma_zaten_var';
+              isInProgress = false;
+            });
+            return;
+          }
           field = tags.join(',');
           for (var t in [kUntagged, translate(kUntagged)]) {
             if (tags.contains(t)) {
@@ -711,18 +732,22 @@ class _AddressBookState extends State<AddressBook> {
               return;
             }
           }
-          gFFI.abModel.addTags(tags);
+          if (await gFFI.abModel.addTags(tags) && ekip) {
+            gFFI.abModel.selectedTags
+              ..clear()
+              ..add(tags.first);
+          }
           // final currentPeers
         }
         close();
       }
 
       return CustomAlertDialog(
-        title: Text(translate("Add Tag")),
+        title: Text(translate(ekip ? "altunakar_firma_ekle" : "Add Tag")),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(translate("whitelist_sep")),
+            Text(translate(ekip ? "altunakar_firma_adi_ipucu" : "whitelist_sep")),
             const SizedBox(
               height: 8.0,
             ),
@@ -730,8 +755,9 @@ class _AddressBookState extends State<AddressBook> {
               children: [
                 Expanded(
                   child: TextField(
-                    maxLines: null,
+                    maxLines: ekip ? 1 : null,
                     decoration: InputDecoration(
+                      hintText: ekip ? translate("altunakar_firma_ornek") : null,
                       errorText: msg.isEmpty ? null : translate(msg),
                     ),
                     controller: controller,
@@ -895,6 +921,11 @@ class AddressBookTag extends StatelessWidget {
     );
   }
 }
+
+/// Altunakar: firma satirinin menusu (yeniden adlandir, renk, sil); RustDesk'in
+/// etiket menusunun aynisi (altunakar_firmalar.dart).
+void altunakarFirmaMenusu(BuildContext context, String ad, RelativeRect konum) =>
+    AddressBookTag(name: ad, tags: gFFI.abModel.selectedTags)._showMenu(context, konum);
 
 MenuEntryButton<String> getEntry(String title, VoidCallback proc) {
   return MenuEntryButton<String>(

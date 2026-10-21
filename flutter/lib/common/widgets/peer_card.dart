@@ -1553,6 +1553,17 @@ class TagPainter extends CustomPainter {
   }
 }
 
+/// Altunakar: ortak defterin cihaz satiri (altunakar_firmalar.dart) RustDesk'in
+/// adres defteri kartindaki menunun aynisini acar.
+Future<void> altunakarCihazMenusu(
+    BuildContext context, Peer peer, RelativeRect konum) async {
+  final items =
+      await AddressBookPeerCard(peer: peer)._buildPopupMenuEntry(context);
+  if (!context.mounted) return;
+  await mod_menu.showMenu(
+      context: context, position: konum, items: items, elevation: 8);
+}
+
 void connectInPeerTab(BuildContext context, Peer peer, PeerTabIndex tab,
     {bool isFileTransfer = false,
     bool isViewCamera = false,
