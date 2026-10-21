@@ -228,7 +228,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       letterSpacing: 0.6)),
             ),
             const SizedBox(width: 12),
-            _altunakarKucukDugme(context, 'Kopyala', () {
+            _altunakarKucukDugme(context, translate('altunakar_kopyala'), () {
               Clipboard.setData(
                   ClipboardData(text: model.serverId.text.replaceAll(' ', '')));
               showToast(translate('Copied'));
@@ -253,7 +253,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             ),
             const SizedBox(width: 12),
             if (showOneTime)
-              _altunakarKucukDugme(context, 'Yenile',
+              _altunakarKucukDugme(context, translate('altunakar_yenile'),
                   () => bind.mainUpdateTemporaryPassword()),
           ]),
         ],

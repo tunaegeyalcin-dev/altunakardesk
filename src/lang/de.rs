@@ -837,5 +837,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_kaynak_kod", "Quellcode"),
         ("altunakar_id_degismez", "Die ID dieses Computers wird bei der Installation vergeben und kann nicht geändert werden."),
         ("altunakar_site_dili", "de"),
+        ("altunakar_kopyala", "Kopieren"),
+        ("altunakar_yenile", "Aktualisieren"),
     ].iter().cloned().collect();
 }

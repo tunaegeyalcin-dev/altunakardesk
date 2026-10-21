@@ -837,5 +837,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_kaynak_kod", "Kaynak kod"),
         ("altunakar_id_degismez", "Bu bilgisayarın numarası kurulumda verilir ve değiştirilemez."),
         ("altunakar_site_dili", "tr"),
+        ("altunakar_kopyala", "Kopyala"),
+        ("altunakar_yenile", "Yenile"),
     ].iter().cloned().collect();
 }
