@@ -12,7 +12,7 @@ Widget altunakarDogrulamaRozeti(String teknisyen) {
     margin: const EdgeInsets.only(top: 6),
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: renk.withOpacity(0.12), // CI Flutter 3.22.3: withValues yok
+      color: renk.withOpacity(0.12), // CI Flutter 3.24.5; withValues 3.27+
       borderRadius: BorderRadius.circular(6),
     ),
     child: Row(
