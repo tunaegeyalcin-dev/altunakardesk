@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hbb/common/altunakar_arama.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/desktop/widgets/refresh_wrapper.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
@@ -1683,6 +1684,18 @@ Future<bool> matchPeer(
     String searchText, Peer peer, PeerTabIndex peerTabIndex) async {
   if (searchText.isEmpty) {
     return true;
+  }
+  // Altunakar: ortak defterde kelime kelime, Turkce harf duyarsiz arama;
+  // firma (etiket) da aranir: "Fortan Gizem" -> Fortan / Gizem Hanim'in bilgisayari.
+  if (peerTabIndex == PeerTabIndex.ab) {
+    return altunakarAramaEslesir(searchText, [
+      peer.id,
+      peer.alias,
+      peer.hostname,
+      peer.username,
+      peer.note,
+      ...peer.tags.map((e) => e.toString()),
+    ]);
   }
   if (peer.id.toLowerCase().contains(searchText)) {
     return true;

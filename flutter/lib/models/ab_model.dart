@@ -34,6 +34,10 @@ const _legacyAddressBookName = "Legacy address book";
 
 const kUntagged = "Untagged";
 
+/// Altunakar: ekip sunucusundaki tek paylasilan defter (Asama 2). Sunucudaki
+/// `ekipDefterAdi` ile BIREBIR ayni.
+const kAltunakarEkipDefteri = "Altunakar Müşterileri";
+
 enum ForcePullAb {
   listAndCurrent,
   current,
@@ -158,8 +162,8 @@ class AbModel {
         if (_personalAbGuid != null) {
           debugPrint("pull ab list");
           List<AbProfile> abProfiles = List.empty(growable: true);
-          abProfiles.add(AbProfile(_personalAbGuid!, _personalAddressBookName,
-              gFFI.userModel.userName.value, null, ShareRule.read.value, null));
+          // Altunakar: kisisel defter gosterilmez; butun cihazlar ortak defterde,
+          // butun teknisyenler ayni listeyi gorur (sunucu kisisel deftere yazmaz).
           // get all address book name
           await _getSharedAbProfiles(abProfiles, quiet: quiet);
           addressbooks.removeWhere((key, value) =>
@@ -188,7 +192,7 @@ class AbModel {
         if (!addressbooks.containsKey(_currentName.value)) {
           setCurrentName(legacyMode.value
               ? _legacyAddressBookName
-              : _personalAddressBookName);
+              : kAltunakarEkipDefteri);
         }
         // pull current address book
         await current.pullAb(quiet: quiet);
