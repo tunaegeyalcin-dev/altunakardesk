@@ -3993,6 +3993,15 @@ impl LoginConfigHandler {
         msg_out
     }
 
+    /// Altunakar: beyaz tahta şekli (hbb_common::altunakar_cizim).
+    pub fn altunakar_cizim(&self, c: AltunakarCizim) -> Message {
+        let mut misc = Misc::new();
+        misc.set_altunakar_cizim(c);
+        let mut msg_out = Message::new();
+        msg_out.set_misc(misc);
+        msg_out
+    }
+
     pub fn mark_restarting_remote_device(&mut self) {
         self.restarting_remote_device = true;
         self.restart_remote_device_at = Some(Instant::now());

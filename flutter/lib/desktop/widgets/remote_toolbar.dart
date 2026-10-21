@@ -17,6 +17,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:window_size/window_size.dart' as window_size;
 
 import '../../common.dart';
+import '../../models/altunakar_cizim_model.dart';
 import '../../models/model.dart';
 import '../../models/platform_model.dart';
 import '../../common/shared_state.dart';
@@ -844,6 +845,18 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     // Do not show keyboard for camera connection type.
     if (widget.ffi.connType == ConnType.defaultConn) {
       toolbarItems.add(_KeyboardMenu(id: widget.id, ffi: widget.ffi));
+    }
+    // Altunakar: beyaz tahta (karşı ekrana çizim). Karşı katman Windows ve Mac'te var.
+    if (!isWeb && widget.ffi.connType == ConnType.defaultConn) {
+      toolbarItems.add(Obx(() {
+        final ffiModel = widget.ffi.ffiModel;
+        final platform = ffiModel.pi.platform;
+        if (!ffiModel.keyboard ||
+            (platform != kPeerPlatformWindows && platform != kPeerPlatformMacOS)) {
+          return Offstage();
+        }
+        return _AltunakarCizimMenu(ffi: widget.ffi);
+      }));
     }
     toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
     if (!isWeb) {
@@ -2860,6 +2873,90 @@ class _ChatMenuState extends State<_ChatMenu> {
       onPressed: () =>
           bind.sessionRequestVoiceCall(sessionId: widget.ffi.sessionId),
     );
+  }
+}
+
+/// Altunakar: beyaz tahta menüsü. Çizim modu açıkken simge turuncu olur; sol tuşla sürüklemek
+/// karşı ekrana çizer (fare olayı karşıya gitmez).
+class _AltunakarCizimMenu extends StatelessWidget {
+  final FFI ffi;
+  const _AltunakarCizimMenu({Key? key, required this.ffi}) : super(key: key);
+
+  static const Color _turuncu = Color(0xFFFF8C1A);
+
+  @override
+  Widget build(BuildContext context) {
+    final m = AltunakarCizimModel.of(ffi.sessionId);
+    return Obx(() => _IconSubmenuButton(
+          tooltip: 'Whiteboard',
+          icon: Icon(Icons.draw_rounded, color: Colors.white, size: 20),
+          ffi: ffi,
+          color: m.etkin.value ? _turuncu : _ToolbarTheme.blueColor,
+          hoverColor:
+              m.etkin.value ? _turuncu : _ToolbarTheme.hoverBlueColor,
+          menuChildrenGetter: (_) => [
+            Obx(() => CkbMenuButton(
+                  value: m.etkin.value,
+                  onChanged: (v) => m.etkin.value = v == true,
+                  child: Text(translate('Drawing mode')),
+                  ffi: ffi,
+                )),
+            Divider(),
+            ...[
+              (AltunakarCizimModel.kalem, 'Pen'),
+              (AltunakarCizimModel.cizgi, 'Line'),
+              (AltunakarCizimModel.ok, 'Arrow'),
+              (AltunakarCizimModel.dikdortgen, 'Rectangle'),
+              (AltunakarCizimModel.elips, 'Ellipse'),
+            ].map((a) => Obx(() => RdoMenuButton<int>(
+                  value: a.$1,
+                  groupValue: m.arac.value,
+                  onChanged: (v) {
+                    if (v != null) m.arac.value = v;
+                    m.etkin.value = true;
+                  },
+                  child: Text(translate(a.$2)),
+                  ffi: ffi,
+                ))),
+            Divider(),
+            ...AltunakarCizimModel.renkler.map((r) => Obx(() => RdoMenuButton<int>(
+                  value: r.$1,
+                  groupValue: m.renk.value,
+                  onChanged: (v) {
+                    if (v != null) m.renk.value = v;
+                  },
+                  child: Row(children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                          color: AltunakarCizimModel.renkOf(r.$1),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey)),
+                    ),
+                    SizedBox(width: 8),
+                    Text(translate(r.$2)),
+                  ]),
+                  ffi: ffi,
+                ))),
+            Divider(),
+            ...AltunakarCizimModel.kalinliklar.map((k) => Obx(() => RdoMenuButton<int>(
+                  value: k.$1,
+                  groupValue: m.kalinlik.value,
+                  onChanged: (v) {
+                    if (v != null) m.kalinlik.value = v;
+                  },
+                  child: Text(translate(k.$2)),
+                  ffi: ffi,
+                ))),
+            Divider(),
+            MenuButton(
+              child: Text(translate('Clear drawings')),
+              ffi: ffi,
+              onPressed: () => m.temizle(),
+            ),
+          ],
+        ));
   }
 }
 

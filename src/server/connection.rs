@@ -1918,6 +1918,9 @@ impl Connection {
             self.tx_from_authed.clone(),
             self.lr.clone(),
         ));
+        if auth_conn_type == AuthConnType::Remote {
+            self.altunakar_cerceve_ac();
+        }
         self.session_last_recv_time = SESSIONS
             .lock()
             .unwrap()
@@ -3916,6 +3919,29 @@ impl Connection {
                             }
                         }
                     }
+                    Some(misc::Union::AltunakarCizim(_c)) => {
+                        // Altunakar: beyaz tahta. Yalnız kontrol (klavye/fare) izni olan masaüstü
+                        // oturumu çizebilir; çizimler oturum bitince silinir.
+                        #[cfg(any(target_os = "windows", target_os = "macos"))]
+                        if self.is_authed_remote_conn() && self.keyboard && Self::altunakar_katman_destekli() {
+                            use crate::whiteboard;
+                            use hbb_common::altunakar_cizim as ac;
+                            let k = ac::anahtar_cizim(self.inner.id());
+                            let olay = if _c.temizle {
+                                whiteboard::CustomEvent::Clear
+                            } else {
+                                whiteboard::CustomEvent::Cizim(ac::Cizim {
+                                    kimlik: _c.kimlik,
+                                    arac: _c.arac,
+                                    argb: _c.argb,
+                                    kalinlik: _c.kalinlik as f32,
+                                    noktalar: ac::ciftlere(&_c.noktalar),
+                                    ekle: _c.ekle,
+                                })
+                            };
+                            whiteboard::altunakar_gonder(k, olay);
+                        }
+                    }
                     Some(misc::Union::AltunakarOturumIslemi(_islem)) => {
                         // Altunakar: yeniden baslatma izni olan taraf kullaniciyi degistirebilir
                         // ve oturumu kapatabilir (yalniz Windows).
@@ -5741,6 +5767,38 @@ impl Connection {
         }
     }
 
+    /// Altunakar: karşı ekran katmanı (çerçeve, beyaz tahta) bu sistemde çalışır mı.
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    fn altunakar_katman_destekli() -> bool {
+        #[cfg(target_os = "windows")]
+        return crate::platform::windows::is_win_10_or_greater();
+        #[cfg(target_os = "macos")]
+        return true;
+    }
+
+    /// Altunakar: masaüstü oturumu başlayınca karşı ekranın kenarında çerçeve ve
+    /// "Altunakar Destek bağlı · <ad>" etiketi; oturum bitince kalkar (AuthedConnID düşerken).
+    fn altunakar_cerceve_ac(&self) {
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        {
+            use hbb_common::altunakar_cizim as ac;
+            if Config::get_option(ac::SECENEK_CERCEVE) == "N" || !Self::altunakar_katman_destekli() {
+                return;
+            }
+            let ad = self
+                .altunakar_teknisyen
+                .clone()
+                .filter(|a| !a.trim().is_empty())
+                .unwrap_or_else(|| self.lr.my_name.clone());
+            crate::whiteboard::altunakar_gonder(
+                ac::anahtar_cerceve(self.inner.id()),
+                crate::whiteboard::CustomEvent::Cerceve(ac::Cerceve {
+                    etiket: ac::cerceve_etiketi(&ad),
+                }),
+            );
+        }
+    }
+
     fn is_authed_remote_conn(&self) -> bool {
         if let Some(id) = self.authed_conn_id.as_ref() {
             return id.conn_type() == AuthConnType::Remote;
@@ -7037,6 +7095,12 @@ mod raii {
             {
                 use crate::whiteboard;
                 whiteboard::unregister_whiteboard(whiteboard::get_key_cursor(self.0));
+                #[cfg(any(target_os = "windows", target_os = "macos"))]
+                {
+                    use hbb_common::altunakar_cizim as ac;
+                    whiteboard::altunakar_kapat(ac::anahtar_cerceve(self.0));
+                    whiteboard::altunakar_kapat(ac::anahtar_cizim(self.0));
+                }
             }
         }
     }

@@ -586,6 +586,36 @@ impl<T: InvokeUiSession> Session<T> {
         self.send(Data::Message(msg));
     }
 
+    /// Altunakar: beyaz tahta. `noktalar` "x,y,x,y" (uzak ekran koordinatı, fareyle aynı);
+    /// `temizle` bu oturumun bütün çizimlerini siler.
+    pub fn altunakar_cizim(
+        &self,
+        kimlik: u32,
+        arac: u32,
+        argb: u32,
+        kalinlik: u32,
+        noktalar: &str,
+        ekle: bool,
+        temizle: bool,
+    ) {
+        let Some(noktalar) = hbb_common::altunakar_cizim::metinden_noktalar(noktalar) else {
+            log::warn!("Gecersiz cizim noktalari");
+            return;
+        };
+        let c = AltunakarCizim {
+            kimlik,
+            arac,
+            argb,
+            kalinlik,
+            noktalar,
+            ekle,
+            temizle,
+            ..Default::default()
+        };
+        let msg = self.lc.read().unwrap().altunakar_cizim(c);
+        self.send(Data::Message(msg));
+    }
+
     pub fn get_audit_server(&self, typ: String) -> String {
         if LocalConfig::get_option("access_token").is_empty() {
             return "".to_owned();

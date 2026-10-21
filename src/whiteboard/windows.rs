@@ -13,7 +13,55 @@ use tao::{
     platform::windows::WindowBuilderExtWindows,
     window::WindowBuilder,
 };
-use tiny_skia::{Color, FillRule, Paint, PathBuilder, PixmapMut, Stroke, Transform};
+use hbb_common::altunakar_cizim::{self as ac, SekilDeposu};
+use tiny_skia::{Color, FillRule, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, Stroke, Transform};
+
+/// Altunakar: nokta dizisini yuvarlak uçlu çizgiyle boyar. Renk ARGB; tampon BGRA olduğundan
+/// kırmızı ile mavi yer değiştirir (imleç çiziminde de böyle).
+fn altunakar_boya(pixmap: &mut PixmapMut, noktalar: &[(f32, f32)], argb: u32, kalinlik: f32) {
+    if noktalar.len() < 2 {
+        return;
+    }
+    let mut pb = PathBuilder::new();
+    pb.move_to(noktalar[0].0, noktalar[0].1);
+    for p in &noktalar[1..] {
+        pb.line_to(p.0, p.1);
+    }
+    let Some(path) = pb.finish() else {
+        return;
+    };
+    let (r, g, b, a) = ac::argb_parcala(argb);
+    let mut paint = Paint::default();
+    paint.set_color_rgba8(b, g, r, a);
+    paint.anti_alias = true;
+    let mut stroke = Stroke::default();
+    stroke.width = kalinlik;
+    stroke.line_cap = LineCap::Round;
+    stroke.line_join = LineJoin::Round;
+    pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
+}
+
+/// Altunakar: ekranların pencere içindeki dikdörtgenleri ve pencerenin başlangıcı.
+fn altunakar_ekranlar() -> ((f32, f32), Vec<(f32, f32, f32, f32)>) {
+    let kok = super::server::get_displays_rect()
+        .map(|(x, y, _, _)| (x as f32, y as f32))
+        .unwrap_or((0.0, 0.0));
+    let ekranlar = crate::server::display_service::try_get_displays()
+        .map(|d| {
+            d.iter()
+                .map(|e| {
+                    (
+                        e.origin().0 as f32 - kok.0,
+                        e.origin().1 as f32 - kok.1,
+                        e.width() as f32,
+                        e.height() as f32,
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    (kok, ekranlar)
+}
 
 pub(super) fn create_event_loop() -> ResultType<()> {
     let face = match create_font_face() {
@@ -72,9 +120,20 @@ pub(super) fn create_event_loop() -> ResultType<()> {
     let mut ripples: Vec<Ripple> = Vec::new();
     let mut last_cursors: HashMap<String, Cursor> = HashMap::new();
     let mut resized = final_size.is_none();
+    // Altunakar: beyaz tahta şekilleri ve bağlıyken ekran çerçevesi (anahtar → etiket).
+    let mut sekiller = SekilDeposu::default();
+    let mut cerceveler: HashMap<String, String> = HashMap::new();
+    let (kok, ekranlar) = altunakar_ekranlar();
+    // Altunakar: yalnız bir şey değişince (ya da tıklama halkası canlanırken) yeniden çiz.
+    // Önceden döngü durmadan çiziyordu; çerçeve her oturumda açık olduğundan işlemciyi yorardı.
+    let mut kirli = true;
 
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
+        *control_flow = if ripples.is_empty() {
+            ControlFlow::Wait
+        } else {
+            ControlFlow::WaitUntil(Instant::now() + std::time::Duration::from_millis(16))
+        };
 
         match event {
             Event::WindowEvent { event, .. } => match event {
@@ -89,6 +148,7 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                         window.set_inner_size(size);
                     }
                     resized = true;
+                    kirli = true;
                     return;
                 }
 
@@ -122,6 +182,40 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                     return;
                 };
                 pixmap.fill(Color::TRANSPARENT);
+
+                for c in sekiller.hepsi() {
+                    for cizgi in ac::sekil_cizgileri(c, kok) {
+                        altunakar_boya(&mut pixmap, &cizgi, c.argb, c.kalinlik);
+                    }
+                }
+                if let Some(etiket) = cerceveler.values().next() {
+                    let ekran_listesi = if ekranlar.is_empty() {
+                        vec![(0.0, 0.0, width.get() as f32, height.get() as f32)]
+                    } else {
+                        ekranlar.clone()
+                    };
+                    for cizgi in ac::cerceve_cizgileri(&ekran_listesi, ac::CERCEVE_KALINLIK) {
+                        altunakar_boya(&mut pixmap, &cizgi, ac::CERCEVE_ARGB, ac::CERCEVE_KALINLIK);
+                    }
+                    if let Some(face) = face.as_ref() {
+                        let boyut = 18.0f32;
+                        let olcek = boyut / face.units_per_em() as f32;
+                        let genislik: f32 = etiket
+                            .chars()
+                            .filter_map(|ch| face.glyph_hor_advance(face.glyph_index(ch).unwrap_or_default()))
+                            .map(|a| a as f32 * olcek)
+                            .sum();
+                        let (r, g, b, a) = ac::argb_parcala(ac::CERCEVE_ARGB);
+                        let mut yazi = Paint::default();
+                        yazi.set_color_rgba8(b, g, r, a);
+                        yazi.anti_alias = true;
+                        for e in &ekran_listesi {
+                            let x = e.0 + (e.2 - genislik) / 2.0;
+                            let y = e.1 + ac::CERCEVE_KALINLIK + 8.0 + boyut;
+                            draw_text(&mut pixmap, face, etiket, x, y, &yazi, boyut);
+                        }
+                    }
+                }
 
                 Ripple::retain_active(&mut ripples);
                 for ripple in &ripples {
@@ -206,24 +300,40 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                 }
             }
             Event::MainEventsCleared => {
-                window.request_redraw();
+                if kirli || !ripples.is_empty() {
+                    kirli = false;
+                    window.request_redraw();
+                }
             }
-            Event::UserEvent((k, evt)) => match evt {
-                CustomEvent::Cursor(cursor) => {
-                    if cursor.btns != 0 {
-                        ripples.push(Ripple {
-                            x: cursor.x,
-                            y: cursor.y,
-                            start_time: Instant::now(),
-                        });
+            Event::UserEvent((k, evt)) => {
+                kirli = true;
+                match evt {
+                    CustomEvent::Cursor(cursor) => {
+                        if cursor.btns != 0 {
+                            ripples.push(Ripple {
+                                x: cursor.x,
+                                y: cursor.y,
+                                start_time: Instant::now(),
+                            });
+                        }
+                        last_cursors.insert(k, cursor);
                     }
-                    last_cursors.insert(k, cursor);
+                    CustomEvent::Cizim(c) => {
+                        sekiller.uygula(&k, c);
+                    }
+                    CustomEvent::Cerceve(c) => {
+                        cerceveler.insert(k, c.etiket);
+                    }
+                    CustomEvent::Clear => {
+                        sekiller.temizle(&k);
+                        cerceveler.remove(&k);
+                        last_cursors.remove(&k);
+                    }
+                    CustomEvent::Exit => {
+                        *control_flow = ControlFlow::Exit;
+                    }
                 }
-                CustomEvent::Exit => {
-                    *control_flow = ControlFlow::Exit;
-                }
-                _ => {}
-            },
+            }
             _ => (),
         }
     });

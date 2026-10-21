@@ -3,9 +3,11 @@ use core_graphics::context::CGContextRef;
 use foreign_types::ForeignTypeRef;
 use hbb_common::{bail, log, ResultType};
 use objc::{class, msg_send, runtime::Object, sel, sel_impl};
+use hbb_common::altunakar_cizim::{self as ac, SekilDeposu};
 use piet::{
     kurbo::{BezPath, Point},
-    FontFamily, RenderContext, Text, TextLayout, TextLayoutBuilder,
+    FontFamily, LineCap, LineJoin, RenderContext, StrokeStyle, Text, TextLayout,
+    TextLayoutBuilder,
 };
 use piet_coregraphics::{CoreGraphicsContext, CoreGraphicsTextLayout};
 use std::{collections::HashMap, sync::Arc, time::Instant};
@@ -21,6 +23,30 @@ use tao::{
 const MAXIMUM_WINDOW_LEVEL: i64 = 2147483647;
 const CURSOR_TEXT_FONT_SIZE: f64 = 14.0;
 const CURSOR_TEXT_OFFSET: f64 = 20.0;
+const CERCEVE_YAZI_BOYUTU: f64 = 15.0;
+/// Etiket menü çubuğunun altında kalsın.
+const CERCEVE_YAZI_UST: f64 = 34.0;
+
+fn altunakar_renk(argb: u32) -> piet::Color {
+    let (r, g, b, a) = ac::argb_parcala(argb);
+    piet::Color::rgba8(r, g, b, a)
+}
+
+/// Altunakar: nokta dizisini yuvarlak uçlu çizgiyle boyar.
+fn altunakar_boya(context: &mut CoreGraphicsContext, noktalar: &[(f32, f32)], argb: u32, kalinlik: f32) {
+    if noktalar.len() < 2 {
+        return;
+    }
+    let mut pb = BezPath::new();
+    pb.move_to((noktalar[0].0 as f64, noktalar[0].1 as f64));
+    for p in &noktalar[1..] {
+        pb.line_to((p.0 as f64, p.1 as f64));
+    }
+    let stil = StrokeStyle::new()
+        .line_join(LineJoin::Round)
+        .line_cap(LineCap::Round);
+    context.stroke_styled(pb, &altunakar_renk(argb), kalinlik as f64, &stil);
+}
 
 struct WindowState {
     window: Arc<Window>,
@@ -115,6 +141,9 @@ fn draw_cursors(
     window_ripples: &mut HashMap<WindowId, Vec<Ripple>>,
     last_cursors: &HashMap<String, CursorInfo>,
     map_cursor_text: &mut HashMap<(String, u32), CoreGraphicsTextLayout>,
+    sekiller: &SekilDeposu,
+    cerceveler: &HashMap<String, String>,
+    cerceve_yazilari: &mut HashMap<String, CoreGraphicsTextLayout>,
 ) {
     for window in windows.iter() {
         if window.window.id() != window_id {
@@ -139,6 +168,50 @@ fn draw_cursors(
                                 None,
                             );
                             context.clear(None, piet::Color::TRANSPARENT);
+
+                            // Altunakar: beyaz tahta şekilleri (bu ekranın başlangıcına göre).
+                            let kok = (
+                                window.display_origin.0 as f32,
+                                window.display_origin.1 as f32,
+                            );
+                            for c in sekiller.hepsi() {
+                                for cizgi in ac::sekil_cizgileri(c, kok) {
+                                    altunakar_boya(&mut context, &cizgi, c.argb, c.kalinlik);
+                                }
+                            }
+                            // Altunakar: bağlıyken ekran çerçevesi ve etiketi.
+                            if let Some(etiket) = cerceveler.values().next() {
+                                let (w, h) = (
+                                    window.logical_size.width as f32,
+                                    window.logical_size.height as f32,
+                                );
+                                for cizgi in ac::cerceve_cizgileri(&[(0.0, 0.0, w, h)], ac::CERCEVE_KALINLIK) {
+                                    altunakar_boya(&mut context, &cizgi, ac::CERCEVE_ARGB, ac::CERCEVE_KALINLIK);
+                                }
+                                if !cerceve_yazilari.contains_key(etiket) {
+                                    if let Ok(layout) = context
+                                        .text()
+                                        .new_text_layout(etiket.clone())
+                                        .font(FontFamily::SYSTEM_UI, CERCEVE_YAZI_BOYUTU)
+                                        .text_color(piet::Color::WHITE)
+                                        .build()
+                                    {
+                                        cerceve_yazilari.insert(etiket.clone(), layout);
+                                    }
+                                }
+                                if let Some(layout) = cerceve_yazilari.get(etiket) {
+                                    let boyut = layout.size();
+                                    let pos = Point::new(
+                                        (window.logical_size.width - boyut.width) / 2.0,
+                                        CERCEVE_YAZI_UST,
+                                    );
+                                    let kutu = piet::kurbo::Rect::from_origin_size(pos, boyut)
+                                        .inflate(10.0, 5.0)
+                                        .to_rounded_rect(8.0);
+                                    context.fill(kutu, &altunakar_renk(ac::CERCEVE_ARGB));
+                                    context.draw_text(layout, pos);
+                                }
+                            }
 
                             if let Some(ripples) = window_ripples.get_mut(&window_id) {
                                 Ripple::retain_active(ripples);
@@ -234,9 +307,23 @@ pub(super) fn create_event_loop() -> ResultType<()> {
     let mut window_ripples: HashMap<WindowId, Vec<Ripple>> = HashMap::new();
     let mut last_cursors: HashMap<String, CursorInfo> = HashMap::new();
     let mut map_cursor_text: HashMap<(String, u32), CoreGraphicsTextLayout> = HashMap::new();
+    // Altunakar: beyaz tahta şekilleri ve bağlıyken ekran çerçevesi (anahtar → etiket).
+    let mut sekiller = SekilDeposu::default();
+    let mut cerceveler: HashMap<String, String> = HashMap::new();
+    let mut cerceve_yazilari: HashMap<String, CoreGraphicsTextLayout> = HashMap::new();
 
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
+        // Altunakar: gösterilecek bir şey yokken bekle; varken en çok saniyede 60 kare
+        // (önceden döngü durmadan çiziyordu; çerçeve her oturumda açık).
+        let gosterilecek = !last_cursors.is_empty()
+            || !cerceveler.is_empty()
+            || !sekiller.bos_mu()
+            || window_ripples.values().any(|r| !r.is_empty());
+        *control_flow = if gosterilecek {
+            ControlFlow::WaitUntil(Instant::now() + std::time::Duration::from_millis(16))
+        } else {
+            ControlFlow::Wait
+        };
 
         match event {
             Event::NewEvents(StartCause::Init) => {
@@ -259,6 +346,9 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                     &mut window_ripples,
                     &last_cursors,
                     &mut map_cursor_text,
+                    &sekiller,
+                    &cerceveler,
+                    &mut cerceve_yazilari,
                 );
             }
             Event::MainEventsCleared => {
@@ -312,10 +402,20 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                         break;
                     }
                 }
+                CustomEvent::Cizim(c) => {
+                    sekiller.uygula(&k, c);
+                }
+                CustomEvent::Cerceve(c) => {
+                    cerceveler.insert(k, c.etiket);
+                }
+                CustomEvent::Clear => {
+                    sekiller.temizle(&k);
+                    cerceveler.remove(&k);
+                    last_cursors.remove(&k);
+                }
                 CustomEvent::Exit => {
                     *control_flow = ControlFlow::Exit;
                 }
-                _ => {}
             },
             _ => (),
         }

@@ -21,6 +21,58 @@ lazy_static! {
     static ref TX_WHITEBOARD: RwLock<Option<UnboundedSender<(String, CustomEvent)>>> =
         RwLock::new(None);
     static ref CONNS: RwLock<HashMap<String, Conn>> = Default::default();
+    // Altunakar: katman süreci açılırken gelen kalıcı olaylar (çerçeve, çizim) burada bekler,
+    // açılınca sırasıyla gönderilir. İmleç olayları beklemez (anlık).
+    static ref BEKLEYEN: RwLock<Vec<(String, CustomEvent)>> = Default::default();
+    // Altunakar: çerçeve/çizim olaylarını bağlantı görevini bekletmeden, sırasıyla işleyen iş parçacığı.
+    static ref ALTUNAKAR_IS: std::sync::Mutex<Option<std::sync::mpsc::Sender<AltunakarIs>>> =
+        Default::default();
+}
+
+const EN_COK_BEKLEYEN: usize = 5000;
+
+enum AltunakarIs {
+    Olay(String, CustomEvent),
+    Kapat(String),
+}
+
+fn altunakar_is_gonder(is: AltunakarIs) {
+    let mut g = ALTUNAKAR_IS.lock().unwrap();
+    if g.is_none() {
+        let (tx, rx) = std::sync::mpsc::channel::<AltunakarIs>();
+        std::thread::spawn(move || {
+            for is in rx {
+                match is {
+                    AltunakarIs::Olay(k, e) => {
+                        if !CONNS.read().unwrap().contains_key(&k) {
+                            register_whiteboard(k.clone());
+                        }
+                        update_whiteboard(k, e);
+                    }
+                    AltunakarIs::Kapat(k) => {
+                        if CONNS.read().unwrap().contains_key(&k) {
+                            unregister_whiteboard(k);
+                        }
+                    }
+                }
+            }
+        });
+        *g = Some(tx);
+    }
+    if let Some(tx) = g.as_ref() {
+        allow_err!(tx.send(is));
+    }
+}
+
+/// Altunakar: çerçeve/çizim olayını katmana gönderir (anahtar gerekirse kaydedilir).
+/// Bağlantı görevini bekletmez; olaylar geliş sırasıyla işlenir.
+pub fn altunakar_gonder(k: String, e: CustomEvent) {
+    altunakar_is_gonder(AltunakarIs::Olay(k, e));
+}
+
+/// Altunakar: bağlantı bitince çerçeveyi/çizimleri kaldırır (önceki olaylardan sonra).
+pub fn altunakar_kapat(k: String) {
+    altunakar_is_gonder(AltunakarIs::Kapat(k));
 }
 
 struct Conn {
@@ -60,6 +112,7 @@ pub fn register_whiteboard(k: String) {
 }
 
 pub fn unregister_whiteboard(k: String) {
+    BEKLEYEN.write().unwrap().retain(|(b, _)| b != &k);
     let mut conns = CONNS.write().unwrap();
     conns.remove(&k);
     let is_conns_empty = conns.is_empty();
@@ -128,9 +181,21 @@ fn tx_send_event(conn: &mut Conn, k: String, event: CustomEvent) {
         }
     }
 
-    TX_WHITEBOARD.read().unwrap().as_ref().map(|tx| {
-        allow_err!(tx.send((k, event)));
-    });
+    let tx = TX_WHITEBOARD.read().unwrap();
+    match tx.as_ref() {
+        Some(tx) => {
+            allow_err!(tx.send((k, event)));
+        }
+        None => {
+            if !matches!(event, CustomEvent::Cursor(_)) {
+                let mut b = BEKLEYEN.write().unwrap();
+                if b.len() >= EN_COK_BEKLEYEN {
+                    b.remove(0);
+                }
+                b.push((k, event));
+            }
+        }
+    }
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -209,6 +274,11 @@ async fn start_whiteboard_() -> ResultType<()> {
     let (tx, mut rx) = unbounded_channel();
     tx_whiteboard.replace(tx);
     drop(tx_whiteboard);
+    // Altunakar: açılış sırasında bekleyen çerçeve/çizim olayları.
+    let bekleyen = std::mem::take(&mut *BEKLEYEN.write().unwrap());
+    for d in bekleyen {
+        allow_err!(stream.send(&Data::Whiteboard(d)).await);
+    }
     let _call_on_ret = crate::common::SimpleCallOnReturn {
         b: true,
         f: Box::new(move || {
