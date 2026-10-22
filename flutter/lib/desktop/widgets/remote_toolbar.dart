@@ -848,15 +848,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     }
     // Altunakar: beyaz tahta (karşı ekrana çizim). Karşı katman Windows ve Mac'te var.
     if (!isWeb && widget.ffi.connType == ConnType.defaultConn) {
-      toolbarItems.add(Obx(() {
-        final ffiModel = widget.ffi.ffiModel;
-        final platform = ffiModel.pi.platform;
-        if (!ffiModel.keyboard ||
-            (platform != kPeerPlatformWindows && platform != kPeerPlatformMacOS)) {
-          return Offstage();
-        }
-        return _AltunakarCizimMenu(ffi: widget.ffi);
-      }));
+      toolbarItems.add(_AltunakarCizimMenu(ffi: widget.ffi));
     }
     toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
     if (!isWeb) {
@@ -2886,6 +2878,14 @@ class _AltunakarCizimMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // İzin ve platform Rx değil; Obx içinde okunursa GetX hata verir ve araç
+    // çubuğu gri kutuya döner. _KeyboardMenu gibi Provider ile izlenir.
+    final ffiModel = Provider.of<FfiModel>(context);
+    final platform = ffiModel.pi.platform;
+    if (!ffiModel.keyboard ||
+        (platform != kPeerPlatformWindows && platform != kPeerPlatformMacOS)) {
+      return Offstage();
+    }
     final m = AltunakarCizimModel.of(ffi.sessionId);
     return Obx(() => _IconSubmenuButton(
           tooltip: 'Whiteboard',
