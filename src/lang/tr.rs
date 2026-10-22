@@ -850,5 +850,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar-kayit-aciklama", "Sorunu inceleyebilmemiz için programın son 3 günlük kayıtları Altunakar'a gönderilecek. Kayıtlar şifre ya da ekran görüntüsü içermez; bilgisayar adı, AltunakarDesk numarası ve bağlantı bilgileri (IP adresleri dahil) bulunabilir. Göndermek istiyor musunuz?"),
         ("altunakar-kayit-gonderildi", "Kayıtlarınız Altunakar'a ulaştı. Başvuru kodu: {kod}"),
         ("altunakar-kayit-gonderilemedi", "Kayıtlar gönderilemedi. Lütfen biraz sonra tekrar deneyin ya da 0530 338 21 91'i arayın."),
+        ("altunakar_program_dili", "Program dili"),
+        ("altunakar_sistem_dili", "Sistem dili"),
     ].iter().cloned().collect();
 }

@@ -850,5 +850,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar-kayit-aciklama", "Damit wir das Problem prüfen können, werden die Programmprotokolle der letzten 3 Tage an Altunakar gesendet. Sie enthalten keine Passwörter oder Bildschirmfotos; Computername, AltunakarDesk-Nummer und Verbindungsdaten (einschließlich IP-Adressen) können enthalten sein. Möchten Sie sie senden?"),
         ("altunakar-kayit-gonderildi", "Ihre Protokolle sind bei Altunakar angekommen. Referenzcode: {kod}"),
         ("altunakar-kayit-gonderilemedi", "Die Protokolle konnten nicht gesendet werden. Bitte versuchen Sie es etwas später erneut oder rufen Sie +90 530 338 21 91 an."),
+        ("altunakar_program_dili", "Programmsprache"),
+        ("altunakar_sistem_dili", "Systemsprache"),
     ].iter().cloned().collect();
 }

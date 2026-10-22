@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
@@ -69,6 +70,12 @@ class _InstallPageBodyState extends State<_InstallPageBody>
   final RxBool showProgress = false.obs;
   final RxBool btnEnabled = true.obs;
 
+  // Altunakar: kurulumda program dili sorulur. Secim kullanicinin yerel ayarina (lang) yazilir;
+  // sayfa hemen o dilde yenilenir, kurulan program da ayni ayari okur (ayni kullanici). Butun
+  // diller ve sonradan degistirme: Ayarlar > Genel > Dil.
+  static const _altunakarDiller = ['tr', 'en', 'de'];
+  late String dil;
+
   // todo move to theme.
   final buttonStyle = OutlinedButton.styleFrom(
     textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
@@ -81,6 +88,40 @@ class _InstallPageBodyState extends State<_InstallPageBody>
     startmenu.value = installOptions['STARTMENUSHORTCUTS'] != '0';
     desktopicon.value = installOptions['DESKTOPSHORTCUTS'] != '0';
     printer.value = installOptions['PRINTER'] == '1';
+    dil = bind.mainGetLocalOption(key: kCommConfKeyLang);
+    if (!_altunakarDiller.contains(dil)) dil = defaultOptionLang;
+  }
+
+  Future<void> _dilSec(String key) async {
+    await bind.mainSetLocalOption(key: kCommConfKeyLang, value: key);
+    bind.mainChangeLanguage(lang: key);
+    setState(() => dil = key);
+    reloadCurrentWindow();
+  }
+
+  /// Dil adlari kendi dillerinde yazilir; secili dil ne olursa olsun okunur.
+  Widget _altunakarDilSecimi() {
+    return Row(
+      children: [
+        Icon(Icons.language_rounded, size: 18).marginOnly(right: 8),
+        Text('${translate('altunakar_program_dili')}:').marginOnly(right: 10),
+        SizedBox(
+          width: 260,
+          child: Obx(() => ComboBox(
+                keys: [defaultOptionLang, ..._altunakarDiller],
+                values: [
+                  translate('altunakar_sistem_dili'),
+                  'Türkçe',
+                  'English',
+                  'Deutsch'
+                ],
+                initialKey: dil,
+                onChanged: _dilSec,
+                enabled: btnEnabled.value,
+              )),
+        ),
+      ],
+    );
   }
 
   @override
@@ -138,6 +179,7 @@ class _InstallPageBodyState extends State<_InstallPageBody>
             children: [
               Text(translate('Installation'),
                   style: Theme.of(context).textTheme.headlineMedium),
+              _altunakarDilSecimi().marginOnly(top: 2 * em),
               Row(
                 children: [
                   Text('${translate('Installation Path')}:')

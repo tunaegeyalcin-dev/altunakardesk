@@ -24,9 +24,9 @@ class AppDelegate: FlutterAppDelegate {
     }
 }
 
-/// Altunakar: menu cubugu MainMenu.xib'de Turkce yazili. Sistem dili Turkce olmayan Mac'te
-/// basliklar Almancaya (de) ya da Ingilizceye (diger diller) cevrilir; programin arayuzu de
-/// varsayilan olarak sistem dilini izler (lang.rs). Karsiliklar Apple'in kendi menu adlari.
+/// Altunakar: menu cubugu MainMenu.xib'de Turkce yazili. Programin dili (Ayarlar > Genel > Dil ya da
+/// kurulumda secilen; yoksa sistem dili) Turkce degilse basliklar Almancaya (de) ya da Ingilizceye
+/// (diger diller) cevrilir. Karsiliklar Apple'in kendi menu adlari. Dil degisince bir sonraki acilista.
 private let altunakarMenuCeviri: [String: (en: String, de: String)] = [
     "AltunakarDesk Hakkında": ("About AltunakarDesk", "Über AltunakarDesk"),
     "Ayarlar…": ("Settings…", "Einstellungen …"),
@@ -82,8 +82,28 @@ private let altunakarMenuCeviri: [String: (en: String, de: String)] = [
     "Yardım": ("Help", "Hilfe"),
 ]
 
+/// Programin kayitli dil ayari (local.toml `lang`, hbb_common LocalConfig); bos ya da "default" ise "".
+private func altunakarKayitliDil() -> String {
+    let yol = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+        "Library/Preferences/com.altunakar.AltunakarDesk/AltunakarDesk_local.toml")
+    guard let metin = try? String(contentsOf: yol, encoding: .utf8) else { return "" }
+    for satir in metin.split(separator: "\n") where satir.hasPrefix("lang = ") {
+        let deger = satir.dropFirst(7).trimmingCharacters(in: CharacterSet(charactersIn: "'\" \r"))
+        return deger == "default" ? "" : deger.lowercased()
+    }
+    return ""
+}
+
 private func altunakarMenuyuCevir() {
-    let dil = (Locale.preferredLanguages.first ?? "en").lowercased()
+    let kayitli = altunakarKayitliDil()
+    // macOS'un kendi menu ogeleri (Geri al, Dikte...) uygulamanin AppleLanguages tercihini izler:
+    // programda dil secildiyse onu, secilmediyse sistem dilini kullansin (sonraki acilista gecerli).
+    if ["tr", "en", "de"].contains(kayitli) {
+        UserDefaults.standard.set([kayitli], forKey: "AppleLanguages")
+    } else {
+        UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+    }
+    let dil = kayitli.isEmpty ? (Locale.preferredLanguages.first ?? "en").lowercased() : kayitli
     if dil.hasPrefix("tr") { return }
     let almanca = dil.hasPrefix("de")
     func cevir(_ menu: NSMenu) {
