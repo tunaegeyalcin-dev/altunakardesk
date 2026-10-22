@@ -792,5 +792,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Unattended access permissions", ""),
         ("altunakar-gozetimsiz-ipucu", ""),
         ("Same as interactive access", ""),
+        ("Send logs to Altunakar", ""),
+        ("altunakar-kayit-aciklama", ""),
+        ("altunakar-kayit-gonderildi", ""),
+        ("altunakar-kayit-gonderilemedi", ""),
     ].iter().cloned().collect();
 }

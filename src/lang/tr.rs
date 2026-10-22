@@ -846,5 +846,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Unattended access permissions", "Gözetimsiz erişim izinleri"),
         ("altunakar-gozetimsiz-ipucu", "Kalıcı şifreyle, kimse onaylamadan açılan bağlantılarda geçerlidir. Değiştirmediğiniz izin yukarıdaki İzinler gibi davranır."),
         ("Same as interactive access", "Etkileşimli erişimle aynı yap"),
+        ("Send logs to Altunakar", "Kayıtları Altunakar'a gönder"),
+        ("altunakar-kayit-aciklama", "Sorunu inceleyebilmemiz için programın son 3 günlük kayıtları Altunakar'a gönderilecek. Kayıtlar şifre ya da ekran görüntüsü içermez; bilgisayar adı, AltunakarDesk numarası ve bağlantı bilgileri (IP adresleri dahil) bulunabilir. Göndermek istiyor musunuz?"),
+        ("altunakar-kayit-gonderildi", "Kayıtlarınız Altunakar'a ulaştı. Başvuru kodu: {kod}"),
+        ("altunakar-kayit-gonderilemedi", "Kayıtlar gönderilemedi. Lütfen biraz sonra tekrar deneyin ya da 0530 338 21 91'i arayın."),
     ].iter().cloned().collect();
 }

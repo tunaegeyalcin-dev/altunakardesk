@@ -1093,6 +1093,105 @@ pub fn altunakar_sohbet_kaydi(gelen: bool, numara: &str, kim: &str, metin: &str)
     }
 }
 
+/// Altunakar: kayıt klasörlerini paketleyip ekip sunucusuna yükler (hbb_common::altunakar_kayit).
+/// Dönüş "ok:<başvuru kodu>" ya da "error:<neden>".
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn altunakar_kayit_yukle(kokler: &[(&str, &std::path::Path)]) -> String {
+    match altunakar_kayit_yukle_(kokler) {
+        Ok(kod) => format!("ok:{}", kod),
+        Err(e) => {
+            log::warn!("Kayitlar gonderilemedi: {}", e);
+            format!("error:{}", e)
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn altunakar_kayit_yukle_(kokler: &[(&str, &std::path::Path)]) -> ResultType<String> {
+    use hbb_common::altunakar_kayit as ak;
+    let numara = Config::get_id();
+    let surum = hbb_common::altunakar_guncelleme::surum();
+    let surum = if surum.is_empty() { "-" } else { surum };
+    // Başlıkta yalnız görünür ASCII (cihaz adında Türkçe harf olabilir).
+    let ad: String = hbb_common::whoami::devicename()
+        .chars()
+        .filter(|c| c.is_ascii_graphic() || *c == ' ')
+        .take(60)
+        .collect();
+    let baslik = format!(
+        "AltunakarDesk {} | numara {} | {} | {} | {}",
+        surum,
+        numara,
+        ad,
+        std::env::consts::OS,
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
+    let veri = ak::hazirla(kokler, &baslik)?;
+    let api = crate::ui_interface::get_api_server();
+    let api = if api.trim().is_empty() {
+        hbb_common::config::ALTUNAKAR_API_SUNUCUSU.to_owned()
+    } else {
+        api
+    };
+    let url = format!("{}{}", api.trim_end_matches('/'), ak::UC);
+    let client = crate::hbbs_http::create_http_client_with_url_strict(&url)?;
+    let yanit = client
+        .post(&url)
+        .header("Content-Type", "application/gzip")
+        .header("X-Altunakar-Numara", numara)
+        .header("X-Altunakar-Surum", surum)
+        .header("X-Altunakar-Ad", ad)
+        .timeout(std::time::Duration::from_secs(90))
+        .body(veri)
+        .send()?;
+    if !yanit.status().is_success() {
+        hbb_common::bail!("sunucu yaniti {}", yanit.status());
+    }
+    let j: serde_json::Value = serde_json::from_str(&yanit.text()?).unwrap_or_default();
+    Ok(j.get("kod").and_then(|v| v.as_str()).unwrap_or("").to_owned())
+}
+
+/// Altunakar: "Kayıtları Altunakar'a gönder" düğmesi. Windows'ta kurulu programda hizmet gönderir
+/// (bağlantıları kabul eden hizmetin kayıtları kullanıcıya kapalıdır); olmazsa ve diğer sistemlerde
+/// program kendi kayıtlarını gönderir.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn altunakar_kayit_gonder() -> String {
+    let kullanici = Config::log_path();
+    #[cfg(target_os = "windows")]
+    if crate::platform::is_installed() {
+        match altunakar_kayit_hizmetten(kullanici.to_string_lossy().to_string()) {
+            Ok(s) => return s,
+            Err(e) => log::warn!("Hizmet kayit gondermedi, program gonderiyor: {}", e),
+        }
+    }
+    altunakar_kayit_yukle(&[("program", &kullanici)])
+}
+
+#[cfg(target_os = "windows")]
+#[tokio::main(flavor = "current_thread")]
+async fn altunakar_kayit_hizmetten(kullanici: String) -> ResultType<String> {
+    let mut c = crate::ipc::connect(1000, "").await?;
+    c.send(&crate::ipc::Data::AltunakarKayitIste(kullanici)).await?;
+    match c.next_timeout(120_000).await? {
+        Some(crate::ipc::Data::AltunakarKayitYanit(s)) => Ok(s),
+        _ => hbb_common::bail!("hizmetten yanit gelmedi"),
+    }
+}
+
+/// Altunakar: hizmet tarafı. Kendi kayıtları ve yalnız AltunakarDesk'in kayıt klasörü olduğu
+/// doğrulanan kullanıcı klasörü gönderilir (hizmetten başka klasör okutulamaz).
+#[cfg(target_os = "windows")]
+pub fn altunakar_kayit_yukle_hizmet(kullanici: &str) -> String {
+    use hbb_common::altunakar_kayit as ak;
+    let hizmet = Config::log_path();
+    let k = std::path::PathBuf::from(kullanici);
+    if ak::kullanici_kayit_klasoru_gecerli(&k, &get_app_name()) && k != hizmet {
+        altunakar_kayit_yukle(&[("hizmet", &hizmet), ("program", &k)])
+    } else {
+        altunakar_kayit_yukle(&[("hizmet", &hizmet)])
+    }
+}
+
 #[inline]
 pub fn get_app_name() -> String {
     hbb_common::config::APP_NAME.read().unwrap().clone()

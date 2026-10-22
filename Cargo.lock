@@ -3700,6 +3700,7 @@ dependencies = [
  "dirs-next",
  "dlopen",
  "env_logger 0.11.6",
+ "flate2",
  "flexi_logger",
  "futures",
  "futures-util",

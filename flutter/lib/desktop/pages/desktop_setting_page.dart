@@ -2632,6 +2632,13 @@ class _AboutState extends State<_About> {
                     translate('Website'),
                     style: linkStyle,
                   ).marginSymmetric(vertical: 4.0)),
+              // Altunakar: sorun incelemesi için kayıtları gönder.
+              InkWell(
+                  onTap: _altunakarKayitGonder,
+                  child: Text(
+                    translate('Send logs to Altunakar'),
+                    style: linkStyle,
+                  ).marginSymmetric(vertical: 4.0)),
               Container(
                 decoration: const BoxDecoration(color: Color(0xFF0a5ecb)),
                 padding:
@@ -3351,3 +3358,48 @@ void changeSocks5Proxy() async {
 }
 
 //#endregion
+
+/// Altunakar: "Kayıtları Altunakar'a gönder". Önce ne gönderileceğini söyler, onay alınca gönderir
+/// ve başvuru kodunu gösterir (Rust: common::altunakar_kayit_gonder).
+void _altunakarKayitGonder() {
+  var gonderiliyor = false;
+  String? sonuc;
+  gFFI.dialogManager.show((setState, close, context) {
+    gonder() async {
+      setState(() => gonderiliyor = true);
+      final r = await bind.mainAltunakarKayitGonder();
+      setState(() {
+        gonderiliyor = false;
+        if (r.startsWith('ok:')) {
+          final kod = r.substring(3);
+          sonuc = translate('altunakar-kayit-gonderildi')
+              .replaceAll('{kod}', kod.isEmpty ? '-' : kod);
+        } else {
+          sonuc =
+              '${translate('altunakar-kayit-gonderilemedi')}\n(${r.replaceFirst('error:', '')})';
+        }
+      });
+    }
+
+    return CustomAlertDialog(
+      title: Text(translate('Send logs to Altunakar')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SelectionArea(
+              child: Text(sonuc ?? translate('altunakar-kayit-aciklama'))),
+          if (gonderiliyor) const LinearProgressIndicator().marginOnly(top: 12),
+        ],
+      ),
+      actions: sonuc != null
+          ? [dialogButton('OK', onPressed: close)]
+          : [
+              dialogButton('Cancel',
+                  onPressed: gonderiliyor ? null : close, isOutline: true),
+              dialogButton('Send', onPressed: gonderiliyor ? null : gonder),
+            ],
+      onCancel: gonderiliyor ? null : close,
+    );
+  });
+}

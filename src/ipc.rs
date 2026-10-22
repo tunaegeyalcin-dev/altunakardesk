@@ -502,6 +502,12 @@ pub enum Data {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     Whiteboard((String, crate::whiteboard::CustomEvent)),
     ControlPermissionsRemoteModify(Option<bool>),
+    // Altunakar: "Kayıtları Altunakar'a gönder". Windows'ta hizmet gönderir (kendi kayıtları
+    // kullanıcıya kapalı); istek kullanıcının kayıt klasörünü taşır, yanıt "ok:<kod>"/"error:<neden>".
+    #[cfg(target_os = "windows")]
+    AltunakarKayitIste(String),
+    #[cfg(target_os = "windows")]
+    AltunakarKayitYanit(String),
     #[cfg(target_os = "windows")]
     FileTransferEnabledState(Option<bool>),
     /// CM -> server: the connection manager's WINDOW went away, which is not the same event
@@ -1121,6 +1127,15 @@ async fn handle(data: Data, stream: &mut Connection) {
                     ))
                     .await
             );
+        }
+        #[cfg(target_os = "windows")]
+        Data::AltunakarKayitIste(kullanici) => {
+            let yanit = tokio::task::spawn_blocking(move || {
+                crate::common::altunakar_kayit_yukle_hizmet(&kullanici)
+            })
+            .await
+            .unwrap_or_else(|e| format!("error:{}", e));
+            allow_err!(stream.send(&Data::AltunakarKayitYanit(yanit)).await);
         }
         #[cfg(target_os = "macos")]
         Data::HasNoActiveConns(None) => {

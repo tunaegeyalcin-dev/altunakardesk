@@ -1786,6 +1786,14 @@ pub fn main_get_last_remote_id() -> String {
     LocalConfig::get_remote_id()
 }
 
+/// Altunakar: "Kayıtları Altunakar'a gönder" ("ok:<kod>" / "error:<neden>"). Dart'ta Future.
+pub fn main_altunakar_kayit_gonder() -> String {
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    return crate::common::altunakar_kayit_gonder();
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    return "error:unsupported".to_owned();
+}
+
 pub fn main_get_software_update_url() {
     crate::common::check_software_update();
 }

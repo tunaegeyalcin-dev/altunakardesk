@@ -336,5 +336,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_sohbet_siz", "You"),
         ("altunakar_sohbet_karsi", "Remote side"),
         ("altunakar-gozetimsiz-ipucu", "Applies to connections opened with the permanent password, without anyone accepting. A permission you have not changed behaves like Permissions above."),
+        ("altunakar-kayit-aciklama", "So that we can look into the problem, the program's logs from the last 3 days will be sent to Altunakar. They contain no passwords or screenshots; they may contain the computer name, the AltunakarDesk number and connection details (including IP addresses). Do you want to send them?"),
+        ("altunakar-kayit-gonderildi", "Your logs have reached Altunakar. Reference code: {kod}"),
+        ("altunakar-kayit-gonderilemedi", "The logs could not be sent. Please try again a little later or call +90 530 338 21 91."),
     ].iter().cloned().collect();
 }

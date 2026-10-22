@@ -1339,6 +1339,10 @@ class RustdeskImpl {
         () => js.context.callMethod('setByName', ['send_mouse', msg]));
   }
 
+  Future<String> mainAltunakarKayitGonder({dynamic hint}) {
+    return Future.value('error:unsupported');
+  }
+
   Future<void> sessionRestartRemoteDevice(
       {required UuidValue sessionId, dynamic hint}) {
     return Future(() => js.context.callMethod('setByName', ['restart']));
