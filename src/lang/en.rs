@@ -335,5 +335,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_yenile", "Refresh"),
         ("altunakar_sohbet_siz", "You"),
         ("altunakar_sohbet_karsi", "Remote side"),
+        ("altunakar-gozetimsiz-ipucu", "Applies to connections opened with the permanent password, without anyone accepting. A permission you have not changed behaves like Permissions above."),
     ].iter().cloned().collect();
 }

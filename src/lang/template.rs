@@ -789,5 +789,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Save chat history with people who connect to this computer", ""),
         ("altunakar_sohbet_siz", ""),
         ("altunakar_sohbet_karsi", ""),
+        ("Unattended access permissions", ""),
+        ("altunakar-gozetimsiz-ipucu", ""),
+        ("Same as interactive access", ""),
     ].iter().cloned().collect();
 }

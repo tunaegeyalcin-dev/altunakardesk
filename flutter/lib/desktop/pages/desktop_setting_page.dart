@@ -1243,7 +1243,56 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
       ]);
     }
 
-    return tmpWrapper();
+    // Altunakar: kalıcı şifreyle (kimse onaylamadan) açılan bağlantıların izinleri
+    // (hbb_common::altunakar_izin). Ayarlanmayan izin yukarıdaki "İzinler" gibi davranır.
+    Widget gozetimsiz() {
+      const onek = 'altunakar-gozetimsiz-';
+      String accessMode = bind.mainGetOptionSync(key: kOptionAccessMode);
+      final bool? temelSabit = accessMode == 'full'
+          ? true
+          : (accessMode == 'view' ? false : null);
+      final izinler = <(String, String)>[
+        ('Enable keyboard/mouse', kOptionEnableKeyboard),
+        ('Enable clipboard', kOptionEnableClipboard),
+        ('Enable file transfer', kOptionEnableFileTransfer),
+        ('Enable audio', kOptionEnableAudio),
+        ('Enable remote restart', kOptionEnableRemoteRestart),
+        ('Enable recording session', kOptionEnableRecordSession),
+        if (isWindows) ('Enable blocking user input', kOptionEnableBlockInput),
+        if (bind.mainSupportedPrivacyModeImpls() != '[]')
+          ('Enable privacy mode', kOptionEnablePrivacyMode),
+      ];
+      return _Card(title: 'Unattended access permissions', children: [
+        Text(translate('altunakar-gozetimsiz-ipucu'),
+                style: TextStyle(color: disabledTextColor(context, false)))
+            .marginOnly(left: _kContentHMargin, bottom: 6),
+        ...izinler.map((iz) => _OptionCheckBox(context, iz.$1, iz.$2,
+            enabled: enabled,
+            optGetter: () {
+              final v = bind.mainGetOptionSync(key: '$onek${iz.$2}');
+              if (v.isEmpty) return temelSabit ?? mainGetBoolOptionSync(iz.$2);
+              return option2bool(iz.$2, v);
+            },
+            optSetter: (k, v) async =>
+                bind.mainSetOption(key: '$onek$k', value: v ? 'Y' : 'N'))),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: enabled
+                ? () async {
+                    for (final iz in izinler) {
+                      await bind.mainSetOption(key: '$onek${iz.$2}', value: '');
+                    }
+                    setState(() {});
+                  }
+                : null,
+            child: Text(translate('Same as interactive access')),
+          ),
+        ).marginOnly(left: _kContentHMargin),
+      ]);
+    }
+
+    return Column(children: [tmpWrapper(), gozetimsiz()]);
   }
 
   Widget password(BuildContext context) {

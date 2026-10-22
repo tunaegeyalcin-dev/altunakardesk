@@ -843,5 +843,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Save chat history with people who connect to this computer", "Bu bilgisayara bağlananlarla sohbetleri kaydet"),
         ("altunakar_sohbet_siz", "Siz"),
         ("altunakar_sohbet_karsi", "Karşı taraf"),
+        ("Unattended access permissions", "Gözetimsiz erişim izinleri"),
+        ("altunakar-gozetimsiz-ipucu", "Kalıcı şifreyle, kimse onaylamadan açılan bağlantılarda geçerlidir. Değiştirmediğiniz izin yukarıdaki İzinler gibi davranır."),
+        ("Same as interactive access", "Etkileşimli erişimle aynı yap"),
     ].iter().cloned().collect();
 }

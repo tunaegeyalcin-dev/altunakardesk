@@ -1388,6 +1388,67 @@ impl Connection {
         Ok(())
     }
 
+    /// Altunakar: kalıcı şifreyle (gözetimsiz) açılan oturuma "Gözetimsiz erişim" profilinin izinleri
+    /// uygulanır (hbb_common::altunakar_izin); profilde ayarlanmamış izin etkileşimli ayar gibi kalır.
+    /// Ekip sunucusunun cihaz izinleri (control_permissions) varsa onlar geçerlidir. Doğrulama anında
+    /// çağrılır: müşteri penceresi ve oturum hizmetleri bu değerlerle başlar, değişen izin teknisyene
+    /// bildirilir. Sonradan gelen kısıtlar (dosya aktarımı, yalnız izleme vb.) yine uygulanır.
+    async fn altunakar_izin_profili_uygula(&mut self) {
+        if self.conn_audit_primary_auth != ConnAuditPrimaryAuth::PermanentPassword
+            || self.control_permissions.is_some()
+        {
+            return;
+        }
+        use hbb_common::altunakar_izin as ai;
+        let profil = |izin: &str, temel: bool| {
+            ai::profil_izni(izin, &Config::get_option(&ai::anahtar(izin)), temel)
+        };
+        let eski = [
+            self.keyboard,
+            self.clipboard,
+            self.audio,
+            self.file,
+            self.restart,
+            self.recording,
+            self.block_input,
+            self.privacy_mode,
+        ];
+        let yeni = [
+            profil(keys::OPTION_ENABLE_KEYBOARD, self.keyboard),
+            profil(keys::OPTION_ENABLE_CLIPBOARD, self.clipboard),
+            profil(keys::OPTION_ENABLE_AUDIO, self.audio),
+            profil(keys::OPTION_ENABLE_FILE_TRANSFER, self.file),
+            profil(keys::OPTION_ENABLE_REMOTE_RESTART, self.restart),
+            profil(keys::OPTION_ENABLE_RECORD_SESSION, self.recording),
+            profil(keys::OPTION_ENABLE_BLOCK_INPUT, self.block_input),
+            profil(keys::OPTION_ENABLE_PRIVACY_MODE, self.privacy_mode),
+        ];
+        let izinler = [
+            Permission::Keyboard,
+            Permission::Clipboard,
+            Permission::Audio,
+            Permission::File,
+            Permission::Restart,
+            Permission::Recording,
+            Permission::BlockInput,
+            Permission::PrivacyMode,
+        ];
+        self.keyboard = yeni[0];
+        self.clipboard = yeni[1];
+        self.audio = yeni[2];
+        self.file = yeni[3];
+        self.restart = yeni[4];
+        self.recording = yeni[5];
+        self.block_input = yeni[6];
+        self.privacy_mode = yeni[7];
+        for i in 0..izinler.len() {
+            if yeni[i] != eski[i] {
+                log::info!("Gozetimsiz profil: {:?} -> {}", izinler[i], yeni[i]);
+                self.send_permission(izinler[i], yeni[i]).await;
+            }
+        }
+    }
+
     async fn send_permission(&mut self, permission: Permission, enabled: bool) {
         let mut misc = Misc::new();
         misc.set_permission_info(PermissionInfo {
@@ -1893,6 +1954,7 @@ impl Connection {
         }
         self.authorized = true;
         self.unauthorized_id = None;
+        self.altunakar_izin_profili_uygula().await;
         // One-time means gone once it has let a peer in, not once that peer
         // leaves. This session's later logins come in on the password the
         // session remembers, so they are not affected.
