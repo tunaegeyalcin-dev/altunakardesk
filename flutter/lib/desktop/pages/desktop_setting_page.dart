@@ -685,6 +685,11 @@ class _GeneralState extends State<_General> {
           'allow-altunakar-sohbet-kaydi-gelen',
           isServer: false));
     }
+    // Altunakar: bu bilgisayara bağlanılınca ekranın kenarında turuncu çerçeve ve etiket.
+    if (!bind.isOutgoingOnly() && (isWindows || isMacOS)) {
+      children.add(_OptionCheckBox(context, 'Show screen frame while connected',
+          'altunakar-ekran-cercevesi'));
+    }
     return _Card(title: 'Other', children: children);
   }
 

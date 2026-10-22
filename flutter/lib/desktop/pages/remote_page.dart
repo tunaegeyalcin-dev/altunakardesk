@@ -14,6 +14,7 @@ import '../../common/widgets/remote_input.dart';
 import '../../common.dart';
 import '../../common/widgets/dialog.dart';
 import '../../common/widgets/toolbar.dart';
+import '../../models/altunakar_cizim_model.dart';
 import '../../models/model.dart';
 import '../../models/input_model.dart';
 import '../../models/platform_model.dart';
@@ -657,6 +658,8 @@ class _RemotePageState extends State<RemotePage>
     _pointerLockCenterDebounceTimer?.cancel();
     _pointerLockCenterDebounceTimer = null;
     _waylandKeyboardModeWorker?.dispose();
+    // Altunakar: beyaz tahta durumu oturumla biter (karşıdaki çizimleri karşı taraf siler).
+    if (closeSession) AltunakarCizimModel.birak(sessionId);
     // Clear callback reference to prevent memory leaks and stale references
     _ffi.inputModel.onRelativeMouseModeDisabled = null;
     // Relative mouse mode cleanup is centralized in FFI.close(closeSession: ...).

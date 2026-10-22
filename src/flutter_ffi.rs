@@ -2067,6 +2067,22 @@ pub fn session_restart_remote_device(session_id: SessionID) {
     }
 }
 
+/// Altunakar: beyaz tahta. noktalar "x,y,x,y" (uzak ekran koordinatı).
+pub fn session_altunakar_cizim(
+    session_id: SessionID,
+    kimlik: u32,
+    arac: u32,
+    argb: u32,
+    kalinlik: u32,
+    noktalar: String,
+    ekle: bool,
+    temizle: bool,
+) {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        session.altunakar_cizim(kimlik, arac, argb, kalinlik, &noktalar, ekle, temizle);
+    }
+}
+
 /// Altunakar: islem 1 = kullaniciyi degistir, 2 = oturumu kapat (uzak Windows).
 pub fn session_altunakar_oturum_islemi(session_id: SessionID, islem: u32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {

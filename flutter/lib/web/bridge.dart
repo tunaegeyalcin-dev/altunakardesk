@@ -1348,6 +1348,19 @@ class RustdeskImpl {
     return Future(() => js.context.callMethod('setByName', ['restart']));
   }
 
+  Future<void> sessionAltunakarCizim(
+      {required UuidValue sessionId,
+      required int kimlik,
+      required int arac,
+      required int argb,
+      required int kalinlik,
+      required String noktalar,
+      required bool ekle,
+      required bool temizle,
+      dynamic hint}) {
+    throw UnimplementedError("sessionAltunakarCizim");
+  }
+
   Future<void> sessionAltunakarOturumIslemi(
       {required UuidValue sessionId, required int islem, dynamic hint}) {
     throw UnimplementedError("sessionAltunakarOturumIslemi");

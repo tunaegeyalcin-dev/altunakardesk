@@ -871,7 +871,20 @@ message Misc {
     // Altunakar: uzak Windows oturum islemi (1: kullaniciyi degistir, 2: oturumu kapat).
     // Yukari akistaki alanlarla cakismasin diye buyuk numara.
     uint32 altunakar_oturum_islemi = 1001;
+    // Altunakar: beyaz tahta, kontrol eden taraf karşı ekrana çizer.
+    AltunakarCizim altunakar_cizim = 1002;
   }
+}
+
+// Altunakar: beyaz tahta şekli (hbb_common::altunakar_cizim). Koordinatlar fare olaylarıyla aynı.
+message AltunakarCizim {
+  uint32 kimlik = 1;
+  uint32 arac = 2;               // 1 kalem, 2 çizgi, 3 ok, 4 dikdörtgen, 5 elips
+  uint32 argb = 3;
+  uint32 kalinlik = 4;
+  repeated sint32 noktalar = 5;  // x0,y0,x1,y1,...
+  bool ekle = 6;                 // kalem: noktaları mevcut şekle ekle
+  bool temizle = 7;              // bu bağlantının bütün çizimlerini sil
 }
 
 message VoiceCallRequest {

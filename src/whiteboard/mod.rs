@@ -28,6 +28,9 @@ pub enum CustomEvent {
     Cursor(Cursor),
     Clear,
     Exit,
+    // Altunakar: beyaz tahta şekli ve bağlıyken ekran çerçevesi (hbb_common::altunakar_cizim).
+    Cizim(hbb_common::altunakar_cizim::Cizim),
+    Cerceve(hbb_common::altunakar_cizim::Cerceve),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

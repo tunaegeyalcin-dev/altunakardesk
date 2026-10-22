@@ -16,6 +16,7 @@ import 'package:get/get.dart';
 import '../../models/model.dart';
 import '../../models/platform_model.dart';
 import '../../models/state_model.dart';
+import 'altunakar_cizim_model.dart';
 import 'input_modifier_utils.dart';
 import 'relative_mouse_model.dart';
 import '../common.dart';
@@ -1510,8 +1511,29 @@ class InputModel {
     return dt >= 0 && dt < kTouchAfterMouseWindowMs;
   }
 
+  /// Altunakar: beyaz tahta açıkken sol tuşla sürükleme karşı ekrana çizer; fare olayı
+  /// karşıya gitmez. Koordinat, fare olaylarıyla aynı dönüşümden geçer.
+  bool _altunakarCizim(PointerEvent e) {
+    final m = AltunakarCizimModel.bul(sessionId);
+    if (m == null || !m.etkin.value) return false;
+    if (e.kind != ui.PointerDeviceKind.mouse) return true;
+    final pos = _pointerPositionForRemoteCanvas(e);
+    final p = handlePointerDevicePos(kPointerEventKindMouse, pos.dx,
+        max(0.0, pos.dy), false, kMouseEventTypeDefault);
+    final nokta = p == null ? null : Point<double>(p.x.toDouble(), p.y.toDouble());
+    if (e is PointerDownEvent) {
+      if (e.buttons == kPrimaryMouseButton && nokta != null) m.basla(nokta);
+    } else if (e is PointerMoveEvent) {
+      if (nokta != null) m.surukle(nokta);
+    } else if (e is PointerUpEvent) {
+      m.bitir(nokta);
+    }
+    return true;
+  }
+
   void onPointDownImage(PointerDownEvent e) {
     debugPrint("onPointDownImage ${e.kind}");
+    if (_altunakarCizim(e)) return;
     _stopFling = true;
     if (isDesktop) _queryOtherWindowCoords = true;
     _remoteWindowCoords = [];
@@ -1557,6 +1579,7 @@ class InputModel {
 
   void onPointUpImage(PointerUpEvent e) {
     if (isDesktop) _queryOtherWindowCoords = false;
+    if (_altunakarCizim(e)) return;
     if (isViewOnly && !showMyCursor) return;
     if (isViewCamera) return;
 
@@ -1579,6 +1602,7 @@ class InputModel {
   }
 
   void onPointMoveImage(PointerMoveEvent e) {
+    if (_altunakarCizim(e)) return;
     if (isViewOnly && !showMyCursor) return;
     if (isViewCamera) return;
     if (e.kind != ui.PointerDeviceKind.mouse) return;
