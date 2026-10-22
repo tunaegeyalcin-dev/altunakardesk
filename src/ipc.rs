@@ -1262,14 +1262,8 @@ async fn handle(data: Data, stream: &mut Connection) {
         },
         Data::ControlPermissionsRemoteModify(_) => {
             use hbb_common::rendezvous_proto::control_permissions::Permission;
-            let mut state =
+            let state =
                 crate::server::get_control_permission_state(Permission::remote_modify, true);
-            // Altunakar: doğrulanmış teknisyen bağlıyken arayüz kilitlenmez (izin açıkça
-            // kapatılmadıysa). Arayüz bunu "is-remote-modify-enabled-by-control-permissions"
-            // ile okur.
-            if state.is_none() && crate::server::altunakar_teknisyen_bagli() {
-                state = Some(true);
-            }
             allow_err!(
                 stream
                     .send(&Data::ControlPermissionsRemoteModify(state))

@@ -3157,27 +3157,13 @@ Future<void> start_service(bool is_start) async {
   }
 }
 
+/// Altunakar: bilgisayar uzaktan yönetilirken ana pencere ve Ayarlar uzaktaki fareye
+/// kilitlenmez (kararmaz). Teknisyen müşterinin AltunakarDesk'inde kalıcı şifre ve
+/// izinleri uzaktan ayarlayabilmeli; kilit üstelik müşterinin kendi faresinde de takılı
+/// kalıyordu. Müşterinin bağlantı penceresindeki (CM) izin düğmeleri ayrı kilitle
+/// (allowRemoteCMModification) korunmaya devam eder.
 Future<bool> canBeBlocked() async {
-  if (isWeb) {
-    // Web can only act as a controller, never as a controlled side,
-    // so it should never be blocked by a remote session.
-    return false;
-  }
-  // First check control permission
-  final controlPermission = await bind.mainGetCommon(
-      key: "is-remote-modify-enabled-by-control-permissions");
-  if (controlPermission == "true") {
-    return false;
-  } else if (controlPermission == "false") {
-    return true;
-  }
-
-  // Check local settings
-  var accessMode = await bind.mainGetOption(key: kOptionAccessMode);
-  var isCustomAccessMode = accessMode != 'full' && accessMode != 'view';
-  var option = option2bool(kOptionAllowRemoteConfigModification,
-      await bind.mainGetOption(key: kOptionAllowRemoteConfigModification));
-  return accessMode == 'view' || (isCustomAccessMode && !option);
+  return false;
 }
 
 // to-do: web not implemented
@@ -3204,19 +3190,8 @@ Widget buildRemoteBlock(
     required RxBool block,
     required bool mask,
     WhetherUseRemoteBlock? use}) {
-  // Altunakar: kilit yalnız fare pencereye girerken değil, pencere içinde oynadıkça da
-  // (en sık 250 ms'de bir) yeniden değerlendirilir. Önceden uzaktaki fare bir kez girince
-  // müşteri kendi faresini oynatsa da pencereden çıkıp girmeden kararma kalkmıyordu.
-  var sonKontrol = 0;
   return Obx(() => MouseRegion(
         onEnter: (_) async {
-          sonKontrol = DateTime.now().millisecondsSinceEpoch;
-          await shouldBeBlocked(block, use);
-        },
-        onHover: (_) async {
-          final simdi = DateTime.now().millisecondsSinceEpoch;
-          if (simdi - sonKontrol < 250) return;
-          sonKontrol = simdi;
           await shouldBeBlocked(block, use);
         },
         onExit: (event) => block.value = false,
