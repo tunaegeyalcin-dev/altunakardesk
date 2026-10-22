@@ -785,5 +785,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Sign out", ""),
         ("altunakar-switch-user-tip", ""),
         ("altunakar-sign-out-tip", ""),
+        ("Save chat history with computers I connect to", ""),
+        ("Save chat history with people who connect to this computer", ""),
+        ("altunakar_sohbet_siz", ""),
+        ("altunakar_sohbet_karsi", ""),
     ].iter().cloned().collect();
 }

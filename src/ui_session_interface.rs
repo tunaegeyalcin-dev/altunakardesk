@@ -790,6 +790,8 @@ impl<T: InvokeUiSession> Session<T> {
     }
 
     pub fn send_chat(&self, text: String) {
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        crate::common::altunakar_sohbet_kaydi(false, &self.get_id(), &crate::lang::translate("altunakar_sohbet_siz".to_owned()), &text);
         let mut misc = Misc::new();
         misc.set_chat_message(ChatMessage {
             text,

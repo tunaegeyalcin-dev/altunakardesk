@@ -2037,6 +2037,13 @@ impl<T: InvokeUiSession> Remote<T> {
                         self.audio_sender.send(MediaData::AudioFormat(f)).ok();
                     }
                     Some(misc::Union::ChatMessage(c)) => {
+                        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                        crate::common::altunakar_sohbet_kaydi(
+                            false,
+                            &self.handler.get_id(),
+                            &crate::lang::translate("altunakar_sohbet_karsi".to_owned()),
+                            &c.text,
+                        );
                         self.handler.new_message(c.text);
                     }
                     Some(misc::Union::PermissionInfo(p)) => {

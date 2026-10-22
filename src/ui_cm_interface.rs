@@ -402,6 +402,8 @@ pub fn remove(id: i32) {
 pub fn send_chat(id: i32, text: String) {
     let clients = CLIENTS.read().unwrap();
     if let Some(client) = clients.get(&id) {
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        crate::common::altunakar_sohbet_kaydi(true, &client.peer_id, &crate::lang::translate("altunakar_sohbet_siz".to_owned()), &text);
         allow_err!(client.tx.send(Data::ChatMessage { text }));
     }
 }
@@ -585,6 +587,21 @@ impl<T: InvokeUiCM> IpcTaskRunner<T> {
                                     CLICK_TIME.store(ms, Ordering::SeqCst);
                                 }
                                 Data::ChatMessage { text } => {
+                                    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                                    {
+                                        let (numara, ad) = CLIENTS
+                                            .read()
+                                            .unwrap()
+                                            .get(&self.conn_id)
+                                            .map(|c| (c.peer_id.clone(), c.name.clone()))
+                                            .unwrap_or_default();
+                                        let kim = if ad.trim().is_empty() {
+                                            crate::lang::translate("altunakar_sohbet_karsi".to_owned())
+                                        } else {
+                                            ad
+                                        };
+                                        crate::common::altunakar_sohbet_kaydi(true, &numara, &kim, &text);
+                                    }
                                     self.cm.new_message(self.conn_id, text);
                                 }
                                 Data::SwitchPermission { name, enabled } => {

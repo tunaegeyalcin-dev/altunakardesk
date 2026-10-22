@@ -670,6 +670,21 @@ class _GeneralState extends State<_General> {
         ).marginOnly(left: _kCheckBoxLeftMargin * 3),
       ));
     }
+    // Altunakar: sohbet geçmişi kaydı (Belgeler/AltunakarDesk/Sohbetler).
+    if (!isWeb && !bind.isIncomingOnly()) {
+      children.add(_OptionCheckBox(
+          context,
+          'Save chat history with computers I connect to',
+          'altunakar-sohbet-kaydi',
+          isServer: false));
+    }
+    if (!isWeb && !bind.isOutgoingOnly()) {
+      children.add(_OptionCheckBox(
+          context,
+          'Save chat history with people who connect to this computer',
+          'allow-altunakar-sohbet-kaydi-gelen',
+          isServer: false));
+    }
     return _Card(title: 'Other', children: children);
   }
 

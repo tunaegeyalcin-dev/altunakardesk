@@ -839,5 +839,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_site_dili", "tr"),
         ("altunakar_kopyala", "Kopyala"),
         ("altunakar_yenile", "Yenile"),
+        ("Save chat history with computers I connect to", "Bağlandığım bilgisayarlarla sohbetleri kaydet"),
+        ("Save chat history with people who connect to this computer", "Bu bilgisayara bağlananlarla sohbetleri kaydet"),
+        ("altunakar_sohbet_siz", "Siz"),
+        ("altunakar_sohbet_karsi", "Karşı taraf"),
     ].iter().cloned().collect();
 }

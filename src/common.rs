@@ -1078,6 +1078,21 @@ pub fn altunakar_dosyayi_dogrula(dosya: &std::path::Path) -> hbb_common::ResultT
     hbb_common::altunakar_guncelleme::dosyayi_dogrula(&bildirim, ad, dosya)
 }
 
+/// Altunakar: sohbet geçmişi kaydı (hbb_common::altunakar_sohbet). `gelen`: bu bilgisayara
+/// bağlanılan oturum (müşteri tarafı, varsayılan kapalı); değilse bağlanan taraf (varsayılan açık).
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn altunakar_sohbet_kaydi(gelen: bool, numara: &str, kim: &str, metin: &str) {
+    use hbb_common::altunakar_sohbet as s;
+    let acik = if gelen {
+        s::gelen_acik(&LocalConfig::get_option(s::SECENEK_GELEN))
+    } else {
+        s::giden_acik(&LocalConfig::get_option(s::SECENEK_GIDEN))
+    };
+    if acik {
+        s::kaydet(numara, kim, metin);
+    }
+}
+
 #[inline]
 pub fn get_app_name() -> String {
     hbb_common::config::APP_NAME.read().unwrap().clone()
