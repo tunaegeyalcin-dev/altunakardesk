@@ -1979,6 +1979,7 @@ impl Connection {
             self.session_key(),
             self.tx_from_authed.clone(),
             self.lr.clone(),
+            self.altunakar_teknisyen.is_some(),
         ));
         if auth_conn_type == AuthConnType::Remote {
             self.altunakar_cerceve_ac();
@@ -6940,6 +6941,19 @@ pub struct AuthedConn {
     pub session_key: SessionKey,
     pub sender: mpsc::UnboundedSender<Data>,
     pub printer: bool,
+    /// Altunakar: ekip sunucusunun imzalı biletiyle doğrulanmış teknisyen.
+    pub altunakar_teknisyen: bool,
+}
+
+/// Altunakar: doğrulanmış bir teknisyen şu an bu bilgisayarı yönetiyor mu. O sırada
+/// müşterinin AltunakarDesk penceresi uzaktan kullanılabilir (kararıp kilitlenmez);
+/// doğrulanmamış bağlantılarda RustDesk'in kilidi aynen geçerli.
+pub fn altunakar_teknisyen_bagli() -> bool {
+    AUTHED_CONNS
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|c| c.altunakar_teknisyen && c.conn_type == AuthConnType::Remote)
 }
 
 mod raii {
@@ -6988,6 +7002,7 @@ mod raii {
             session_key: SessionKey,
             sender: mpsc::UnboundedSender<Data>,
             lr: LoginRequest,
+            altunakar_teknisyen: bool,
         ) -> Self {
             let printer = conn_type == crate::server::AuthConnType::Remote
                 && crate::is_support_remote_print(&lr.version)
@@ -6998,6 +7013,7 @@ mod raii {
                 session_key,
                 sender,
                 printer,
+                altunakar_teknisyen,
             });
             Self::check_wake_lock();
             use std::sync::Once;
@@ -8088,6 +8104,7 @@ mod test {
             session_key,
             sender: mpsc::unbounded_channel().0,
             printer: false,
+            altunakar_teknisyen: false,
         };
         let mine = key(7, "peer");
         let remote = AuthConnType::Remote;
