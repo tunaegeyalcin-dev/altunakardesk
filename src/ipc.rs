@@ -503,7 +503,8 @@ pub enum Data {
     Whiteboard((String, crate::whiteboard::CustomEvent)),
     ControlPermissionsRemoteModify(Option<bool>),
     // Altunakar: "Kayıtları Altunakar'a gönder". Windows'ta hizmet gönderir (kendi kayıtları
-    // kullanıcıya kapalı); istek kullanıcının kayıt klasörünü taşır, yanıt "ok:<kod>"/"error:<neden>".
+    // kullanıcıya kapalı). İstek programın HAZIR paketini taşır (base64 gzip; hizmet dışarıdan yol
+    // almaz), yanıt "ok:<kod>"/"error:<neden>".
     #[cfg(target_os = "windows")]
     AltunakarKayitIste(String),
     #[cfg(target_os = "windows")]
@@ -1129,9 +1130,9 @@ async fn handle(data: Data, stream: &mut Connection) {
             );
         }
         #[cfg(target_os = "windows")]
-        Data::AltunakarKayitIste(kullanici) => {
+        Data::AltunakarKayitIste(program_b64) => {
             let yanit = tokio::task::spawn_blocking(move || {
-                crate::common::altunakar_kayit_yukle_hizmet(&kullanici)
+                crate::common::altunakar_kayit_yukle_hizmet(&program_b64)
             })
             .await
             .unwrap_or_else(|e| format!("error:{}", e));

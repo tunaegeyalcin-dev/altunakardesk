@@ -1093,11 +1093,36 @@ pub fn altunakar_sohbet_kaydi(gelen: bool, numara: &str, kim: &str, metin: &str)
     }
 }
 
-/// Altunakar: kayıt klasörlerini paketleyip ekip sunucusuna yükler (hbb_common::altunakar_kayit).
-/// Dönüş "ok:<başvuru kodu>" ya da "error:<neden>".
+/// Altunakar: bir kayıt klasörünü başlıklı gzip paketine çevirir (hbb_common::altunakar_kayit).
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub fn altunakar_kayit_yukle(kokler: &[(&str, &std::path::Path)]) -> String {
-    match altunakar_kayit_yukle_(kokler) {
+fn altunakar_kayit_paketi(etiket: &str, kok: &std::path::Path) -> ResultType<Vec<u8>> {
+    let surum = hbb_common::altunakar_guncelleme::surum();
+    let baslik = format!(
+        "AltunakarDesk {} | numara {} | {} | {} | {} | {}",
+        if surum.is_empty() { "-" } else { surum },
+        Config::get_id(),
+        altunakar_cihaz_adi(),
+        std::env::consts::OS,
+        etiket,
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
+    hbb_common::altunakar_kayit::hazirla(&[(etiket, kok)], &baslik)
+}
+
+/// Başlıkta yalnız görünür ASCII (cihaz adında Türkçe harf olabilir).
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn altunakar_cihaz_adi() -> String {
+    hbb_common::whoami::devicename()
+        .chars()
+        .filter(|c| c.is_ascii_graphic() || *c == ' ')
+        .take(60)
+        .collect()
+}
+
+/// Altunakar: hazır paketi ekip sunucusuna yükler. Dönüş "ok:<başvuru kodu>" ya da "error:<neden>".
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn altunakar_kayit_yukle(govde: Vec<u8>) -> String {
+    match altunakar_kayit_yukle_(govde) {
         Ok(kod) => format!("ok:{}", kod),
         Err(e) => {
             log::warn!("Kayitlar gonderilemedi: {}", e);
@@ -1107,26 +1132,9 @@ pub fn altunakar_kayit_yukle(kokler: &[(&str, &std::path::Path)]) -> String {
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-fn altunakar_kayit_yukle_(kokler: &[(&str, &std::path::Path)]) -> ResultType<String> {
+fn altunakar_kayit_yukle_(govde: Vec<u8>) -> ResultType<String> {
     use hbb_common::altunakar_kayit as ak;
-    let numara = Config::get_id();
     let surum = hbb_common::altunakar_guncelleme::surum();
-    let surum = if surum.is_empty() { "-" } else { surum };
-    // Başlıkta yalnız görünür ASCII (cihaz adında Türkçe harf olabilir).
-    let ad: String = hbb_common::whoami::devicename()
-        .chars()
-        .filter(|c| c.is_ascii_graphic() || *c == ' ')
-        .take(60)
-        .collect();
-    let baslik = format!(
-        "AltunakarDesk {} | numara {} | {} | {} | {}",
-        surum,
-        numara,
-        ad,
-        std::env::consts::OS,
-        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
-    );
-    let veri = ak::hazirla(kokler, &baslik)?;
     let api = crate::ui_interface::get_api_server();
     let api = if api.trim().is_empty() {
         hbb_common::config::ALTUNAKAR_API_SUNUCUSU.to_owned()
@@ -1138,11 +1146,11 @@ fn altunakar_kayit_yukle_(kokler: &[(&str, &std::path::Path)]) -> ResultType<Str
     let yanit = client
         .post(&url)
         .header("Content-Type", "application/gzip")
-        .header("X-Altunakar-Numara", numara)
-        .header("X-Altunakar-Surum", surum)
-        .header("X-Altunakar-Ad", ad)
+        .header("X-Altunakar-Numara", Config::get_id())
+        .header("X-Altunakar-Surum", if surum.is_empty() { "-" } else { surum })
+        .header("X-Altunakar-Ad", altunakar_cihaz_adi())
         .timeout(std::time::Duration::from_secs(90))
-        .body(veri)
+        .body(govde)
         .send()?;
     if !yanit.status().is_success() {
         hbb_common::bail!("sunucu yaniti {}", yanit.status());
@@ -1151,45 +1159,55 @@ fn altunakar_kayit_yukle_(kokler: &[(&str, &std::path::Path)]) -> ResultType<Str
     Ok(j.get("kod").and_then(|v| v.as_str()).unwrap_or("").to_owned())
 }
 
-/// Altunakar: "Kayıtları Altunakar'a gönder" düğmesi. Windows'ta kurulu programda hizmet gönderir
-/// (bağlantıları kabul eden hizmetin kayıtları kullanıcıya kapalıdır); olmazsa ve diğer sistemlerde
-/// program kendi kayıtlarını gönderir.
+/// Altunakar: "Kayıtları Altunakar'a gönder" düğmesi. Program kendi kayıtlarını kendi yetkisiyle
+/// paketler. Windows'ta kurulu programda paketi hizmete verir; hizmet kendi (kullanıcıya kapalı)
+/// kayıtlarını ekleyip gönderir. Olmazsa ve diğer sistemlerde program kendi paketini gönderir.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn altunakar_kayit_gonder() -> String {
-    let kullanici = Config::log_path();
+    let program = altunakar_kayit_paketi("program", &Config::log_path());
     #[cfg(target_os = "windows")]
     if crate::platform::is_installed() {
-        match altunakar_kayit_hizmetten(kullanici.to_string_lossy().to_string()) {
+        let ek = program.as_ref().map(|v| encode64(v)).unwrap_or_default();
+        match altunakar_kayit_hizmetten(ek) {
             Ok(s) => return s,
             Err(e) => log::warn!("Hizmet kayit gondermedi, program gonderiyor: {}", e),
         }
     }
-    altunakar_kayit_yukle(&[("program", &kullanici)])
+    match program {
+        Ok(v) => altunakar_kayit_yukle(v),
+        Err(e) => format!("error:{}", e),
+    }
 }
 
 #[cfg(target_os = "windows")]
 #[tokio::main(flavor = "current_thread")]
-async fn altunakar_kayit_hizmetten(kullanici: String) -> ResultType<String> {
+async fn altunakar_kayit_hizmetten(program_b64: String) -> ResultType<String> {
     let mut c = crate::ipc::connect(1000, "").await?;
-    c.send(&crate::ipc::Data::AltunakarKayitIste(kullanici)).await?;
+    c.send(&crate::ipc::Data::AltunakarKayitIste(program_b64)).await?;
     match c.next_timeout(120_000).await? {
         Some(crate::ipc::Data::AltunakarKayitYanit(s)) => Ok(s),
         _ => hbb_common::bail!("hizmetten yanit gelmedi"),
     }
 }
 
-/// Altunakar: hizmet tarafı. Kendi kayıtları ve yalnız AltunakarDesk'in kayıt klasörü olduğu
-/// doğrulanan kullanıcı klasörü gönderilir (hizmetten başka klasör okutulamaz).
+/// Altunakar: hizmet tarafı. YALNIZ kendi sabit kayıt klasörünü okur; dışarıdan yol almaz.
+/// Programın verdiği hazır paket (base64 gzip) boyutu ve biçimi denetlenip arkasına eklenir;
+/// iki gzip art arda tek dosya gibi açılır (zcat/gunzip).
 #[cfg(target_os = "windows")]
-pub fn altunakar_kayit_yukle_hizmet(kullanici: &str) -> String {
+pub fn altunakar_kayit_yukle_hizmet(program_b64: &str) -> String {
     use hbb_common::altunakar_kayit as ak;
-    let hizmet = Config::log_path();
-    let k = std::path::PathBuf::from(kullanici);
-    if ak::kullanici_kayit_klasoru_gecerli(&k, &get_app_name()) && k != hizmet {
-        altunakar_kayit_yukle(&[("hizmet", &hizmet), ("program", &k)])
-    } else {
-        altunakar_kayit_yukle(&[("hizmet", &hizmet)])
+    let mut govde = altunakar_kayit_paketi("hizmet", &Config::log_path()).unwrap_or_default();
+    if !program_b64.is_empty() && program_b64.len() <= ak::EK_SINIRI / 3 * 4 + 4 {
+        if let Ok(p) = decode64(program_b64) {
+            if ak::gzip_mi(&p) && govde.len() + p.len() <= ak::EK_SINIRI {
+                govde.extend(p);
+            }
+        }
     }
+    if govde.is_empty() {
+        return "error:gonderilecek kayit dosyasi bulunamadi".to_owned();
+    }
+    altunakar_kayit_yukle(govde)
 }
 
 #[inline]
