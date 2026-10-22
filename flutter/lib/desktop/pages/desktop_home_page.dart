@@ -166,22 +166,33 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
+  // Bundan kısa pencerede sayfa bütün olarak kayar; yoksa adres defteri ezilip
+  // kesiliyordu (1120×640 açılış penceresinde "Cihaz ekle" hiç görünmüyordu).
+  static const _enAzIcerikYuksekligi = 760.0;
+
   Widget _altunakarIcerik(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: gFFI.serverModel,
       child: Container(
         color: Theme.of(context).scaffoldBackgroundColor,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!bind.isOutgoingOnly()) buildPresetPasswordWarning(),
-            Obx(() => buildHelpCards(stateGlobal.updateUrl.value))
-                .paddingSymmetric(horizontal: 28),
-            if (!bind.isOutgoingOnly())
-              _altunakarBuPcKarti(context).paddingOnly(left: 28, top: 18, right: 28),
-            Expanded(child: ConnectionPage()),
-          ],
-        ),
+        child: LayoutBuilder(builder: (context, c) {
+          final sutun = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!bind.isOutgoingOnly()) buildPresetPasswordWarning(),
+              Obx(() => buildHelpCards(stateGlobal.updateUrl.value))
+                  .paddingSymmetric(horizontal: 28),
+              if (!bind.isOutgoingOnly())
+                _altunakarBuPcKarti(context)
+                    .paddingOnly(left: 28, top: 18, right: 28),
+              Expanded(child: ConnectionPage()),
+            ],
+          );
+          if (c.maxHeight >= _enAzIcerikYuksekligi) return sutun;
+          return SingleChildScrollView(
+            child: SizedBox(height: _enAzIcerikYuksekligi, child: sutun),
+          );
+        }),
       ),
     );
   }

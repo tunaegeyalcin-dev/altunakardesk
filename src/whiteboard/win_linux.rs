@@ -178,3 +178,95 @@ pub(super) fn create_font_face() -> ResultType<Face<'static>> {
     let face = Face::parse(font_data, face_index)?;
     Ok(face)
 }
+
+/// Altunakar: ekran çerçevesi etiketinin yazı yüzü (Windows'ta Segoe UI, yoksa sans-serif).
+/// İmleç adlarındaki daktilo yazısı (`create_font_face`) etikette özensiz duruyordu.
+pub(super) fn altunakar_etiket_yazi_yuzu() -> ResultType<Face<'static>> {
+    let mut font_db = fontdb::Database::new();
+    font_db.load_system_fonts();
+    let query = fontdb::Query {
+        families: &[fontdb::Family::Name("Segoe UI"), fontdb::Family::SansSerif],
+        weight: fontdb::Weight::SEMIBOLD,
+        ..fontdb::Query::default()
+    };
+    let Some(font_id) = font_db.query(&query) else {
+        bail!("No sans-serif font found!");
+    };
+    let Some((font_source, face_index)) = font_db.face_source(font_id) else {
+        bail!("No face found for font!");
+    };
+    let font_data: &'static [u8] = Box::leak(match font_source {
+        fontdb::Source::File(path) => std::fs::read(path)?.into_boxed_slice(),
+        fontdb::Source::Binary(data) => data.as_ref().as_ref().to_vec().into_boxed_slice(),
+        fontdb::Source::SharedFile(path, _) => std::fs::read(path)?.into_boxed_slice(),
+    });
+    Ok(Face::parse(font_data, face_index)?)
+}
+
+/// Altunakar: ekran çerçevesinin etiketi; Mac'teki gibi `kutu` renginde yuvarlak kutuda
+/// beyaz yazı. Kutunun üst kenarı `ust_y`, ortası `merkez_x`.
+pub(super) fn altunakar_etiket_ciz(
+    pixmap: &mut PixmapMut,
+    face: &Face,
+    text: &str,
+    merkez_x: f32,
+    ust_y: f32,
+    font_size: f32,
+    kutu: &Paint,
+) {
+    let scale = font_size / face.units_per_em() as f32;
+    let genislik: f32 = text
+        .chars()
+        .filter_map(|ch| face.glyph_hor_advance(face.glyph_index(ch).unwrap_or_default()))
+        .map(|a| a as f32 * scale)
+        .sum();
+    let ascent = face.ascender() as f32 * scale;
+    let yukseklik = (face.ascender() - face.descender()) as f32 * scale;
+    let (bosluk_x, bosluk_y) = (font_size * 0.7, font_size * 0.35);
+    let x = merkez_x - genislik / 2.0;
+
+    if let Some(r) = Rect::from_xywh(
+        x - bosluk_x,
+        ust_y,
+        genislik + 2.0 * bosluk_x,
+        yukseklik + 2.0 * bosluk_y,
+    ) {
+        let yaricap = (r.height() / 2.0).min(font_size * 0.6);
+        let mut pb = PathBuilder::new();
+        pb.move_to(r.x() + yaricap, r.y());
+        pb.line_to(r.right() - yaricap, r.y());
+        pb.quad_to(r.right(), r.y(), r.right(), r.y() + yaricap);
+        pb.line_to(r.right(), r.bottom() - yaricap);
+        pb.quad_to(r.right(), r.bottom(), r.right() - yaricap, r.bottom());
+        pb.line_to(r.x() + yaricap, r.bottom());
+        pb.quad_to(r.x(), r.bottom(), r.x(), r.bottom() - yaricap);
+        pb.line_to(r.x(), r.y() + yaricap);
+        pb.quad_to(r.x(), r.y(), r.x() + yaricap, r.y());
+        pb.close();
+        if let Some(path) = pb.finish() {
+            pixmap.fill_path(&path, kutu, FillRule::Winding, Transform::identity(), None);
+        }
+    }
+
+    let transform =
+        Transform::from_translate(x, ust_y + bosluk_y + ascent).pre_scale(scale, -scale);
+    let mut path_builder = PathBuilder::new();
+    let mut current_x = 0.0;
+    for ch in text.chars() {
+        let glyph_id = face.glyph_index(ch).unwrap_or_default();
+        let mut builder = PathBuilderWrapper {
+            path_builder: &mut path_builder,
+            transform: transform.post_translate(current_x, 0.0),
+        };
+        face.outline_glyph(glyph_id, &mut builder);
+        if let Some(h_advance) = face.glyph_hor_advance(glyph_id) {
+            current_x += h_advance as f32 * scale;
+        }
+    }
+    if let Some(path) = path_builder.finish() {
+        let mut beyaz = Paint::default();
+        beyaz.set_color_rgba8(255, 255, 255, 255);
+        beyaz.anti_alias = true;
+        pixmap.fill_path(&path, &beyaz, FillRule::Winding, Transform::identity(), None);
+    }
+}

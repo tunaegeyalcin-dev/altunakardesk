@@ -1271,15 +1271,23 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
         Text(translate('altunakar-gozetimsiz-ipucu'),
                 style: TextStyle(color: disabledTextColor(context, false)))
             .marginOnly(left: _kContentHMargin, bottom: 6),
-        ...izinler.map((iz) => _OptionCheckBox(context, iz.$1, iz.$2,
-            enabled: enabled,
-            optGetter: () {
-              final v = bind.mainGetOptionSync(key: '$onek${iz.$2}');
-              if (v.isEmpty) return temelSabit ?? mainGetBoolOptionSync(iz.$2);
-              return option2bool(iz.$2, v);
-            },
-            optSetter: (k, v) async =>
-                bind.mainSetOption(key: '$onek$k', value: v ? 'Y' : 'N'))),
+        // Tek sütunda: _Card her alt öğeye ayrıca üst boşluk verir, satırlar İzinler
+        // kartındakinden seyrek duruyordu.
+        Column(
+          children: izinler
+              .map((iz) => _OptionCheckBox(context, iz.$1, iz.$2,
+                  enabled: enabled,
+                  optGetter: () {
+                    final v = bind.mainGetOptionSync(key: '$onek${iz.$2}');
+                    if (v.isEmpty) {
+                      return temelSabit ?? mainGetBoolOptionSync(iz.$2);
+                    }
+                    return option2bool(iz.$2, v);
+                  },
+                  optSetter: (k, v) async => bind.mainSetOption(
+                      key: '$onek$k', value: v ? 'Y' : 'N')))
+              .toList(),
+        ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
@@ -2297,10 +2305,10 @@ class _AccountState extends State<_Account> {
   }
 
   Widget accountAction() {
+    // Altunakar: ad ve kullanıcı adı hemen altındaki kartta; düğmede yinelenince
+    // "Çıkış yap (Ad (@ad))" diye iç içe parantezle uzuyordu.
     return Obx(() => _Button(
-        gFFI.userModel.userName.value.isEmpty
-            ? 'Login'
-            : '${translate('Logout')} (${gFFI.userModel.accountLabelWithHandle})',
+        gFFI.userModel.userName.value.isEmpty ? 'Login' : 'Logout',
         () => {
               gFFI.userModel.userName.value.isEmpty
                   ? loginDialog()
@@ -2656,15 +2664,10 @@ class _AboutState extends State<_About> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'AltunakarDesk © ${DateTime.now().toString().substring(0, 4)} Altunakar Bilgisayar\n${translate('altunakar_tabani')}: RustDesk, Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd. (GNU AGPL-3.0)\n${translate('altunakar_kaynak_kod')}: https://github.com/tunaegeyalcin-dev/altunakardesk\n$license',
+                            'AltunakarDesk © ${DateTime.now().toString().substring(0, 4)} Altunakar Bilgisayar\n${translate('altunakar_tabani')}: RustDesk, Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd. (GNU AGPL-3.0)\n${translate('altunakar_kaynak_kod')}: https://github.com/tunaegeyalcin-dev/altunakardesk${license.isEmpty ? '' : '\n$license'}',
                             style: const TextStyle(color: Colors.white),
                           ),
-                          Text(
-                            translate('Slogan_tip'),
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white),
-                          )
+                          // Altunakar: RustDesk'in "kaotik dünya" sloganı kurumsal kutudan çıkarıldı.
                         ],
                       ),
                     ),

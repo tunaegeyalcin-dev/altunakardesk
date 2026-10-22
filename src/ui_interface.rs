@@ -757,9 +757,16 @@ pub fn get_new_version() -> String {
     .to_string()
 }
 
+/// Altunakar: ekranda derleme etiketindeki tam sürüm (1.5.0-11); hangi güncellemenin
+/// kurulu olduğu destekte buradan okunur. Etiketsiz (yerel) derlemede taban sürüm.
 #[inline]
 pub fn get_version() -> String {
-    crate::VERSION.to_owned()
+    let surum = hbb_common::altunakar_guncelleme::surum();
+    if surum.is_empty() {
+        crate::VERSION.to_owned()
+    } else {
+        surum.to_owned()
+    }
 }
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]

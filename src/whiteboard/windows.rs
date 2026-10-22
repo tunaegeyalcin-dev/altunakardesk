@@ -1,6 +1,6 @@
 use super::{
     server::{Ripple, EVENT_PROXY},
-    win_linux::{create_font_face, draw_text},
+    win_linux::{altunakar_etiket_ciz, altunakar_etiket_yazi_yuzu, create_font_face, draw_text},
     Cursor, CustomEvent,
 };
 use hbb_common::{anyhow::anyhow, log, ResultType};
@@ -68,6 +68,13 @@ pub(super) fn create_event_loop() -> ResultType<()> {
         Ok(face) => Some(face),
         Err(err) => {
             log::error!("Failed to create font face: {}", err);
+            None
+        }
+    };
+    let etiket_yuzu = match altunakar_etiket_yazi_yuzu() {
+        Ok(f) => Some(f),
+        Err(err) => {
+            log::error!("Altunakar etiket yazi yuzu yok: {}", err);
             None
         }
     };
@@ -197,22 +204,25 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                     for cizgi in ac::cerceve_cizgileri(&ekran_listesi, ac::CERCEVE_KALINLIK) {
                         altunakar_boya(&mut pixmap, &cizgi, ac::CERCEVE_ARGB, ac::CERCEVE_KALINLIK);
                     }
-                    if let Some(face) = face.as_ref() {
-                        let boyut = 18.0f32;
-                        let olcek = boyut / face.units_per_em() as f32;
-                        let genislik: f32 = etiket
-                            .chars()
-                            .filter_map(|ch| face.glyph_hor_advance(face.glyph_index(ch).unwrap_or_default()))
-                            .map(|a| a as f32 * olcek)
-                            .sum();
+                    if let Some(face) = etiket_yuzu.as_ref().or(face.as_ref()) {
+                        // Mac'teki etiketle aynı: 15 nokta yazı, ekran ölçeğine göre piksel.
+                        let olcek = window.scale_factor() as f32;
+                        let boyut = 15.0 * olcek;
                         let (r, g, b, a) = ac::argb_parcala(ac::CERCEVE_ARGB);
-                        let mut yazi = Paint::default();
-                        yazi.set_color_rgba8(b, g, r, a);
-                        yazi.anti_alias = true;
+                        let mut kutu = Paint::default();
+                        kutu.set_color_rgba8(b, g, r, a);
+                        kutu.anti_alias = true;
                         for e in &ekran_listesi {
-                            let x = e.0 + (e.2 - genislik) / 2.0;
-                            let y = e.1 + ac::CERCEVE_KALINLIK + 8.0 + boyut;
-                            draw_text(&mut pixmap, face, etiket, x, y, &yazi, boyut);
+                            let ust = e.1 + ac::CERCEVE_KALINLIK + 6.0 * olcek;
+                            altunakar_etiket_ciz(
+                                &mut pixmap,
+                                face,
+                                etiket,
+                                e.0 + e.2 / 2.0,
+                                ust,
+                                boyut,
+                                &kutu,
+                            );
                         }
                     }
                 }

@@ -95,6 +95,12 @@ class _PeersViewState extends State<_PeersView>
     LoadEvent.lan: 'empty_lan_tip',
     LoadEvent.addressBook: 'empty_address_book_tip',
   });
+  static const Map<String, IconData> _emptyIcons = {
+    LoadEvent.recent: Icons.history_rounded,
+    LoadEvent.favorite: Icons.star_outline_rounded,
+    LoadEvent.lan: Icons.wifi_find_rounded,
+    LoadEvent.addressBook: Icons.devices_other_outlined,
+  };
   final space = (isDesktop || isWebDesktop) ? 12.0 : 8.0;
   final _curPeers = <String>{};
   var _lastChangeTime = DateTime.now();
@@ -187,22 +193,35 @@ class _PeersViewState extends State<_PeersView>
       child: Consumer<Peers>(builder: (context, peers, child) {
         if (peers.peers.isEmpty) {
           gFFI.peerTabModel.setCurrentTabCachedPeers([]);
+          // Altunakar: üzgün surat yerine adres defterindeki boş ekranla aynı simge kutusu.
+          final vurgu = Theme.of(context).colorScheme.primary;
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.sentiment_very_dissatisfied_rounded,
-                  color: Theme.of(context).tabBarTheme.labelColor,
-                  size: 40,
-                ).paddingOnly(bottom: 10),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: vurgu.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    _emptyIcons[widget.peers.loadEvent] ??
+                        Icons.devices_other_outlined,
+                    color: vurgu,
+                    size: 26,
+                  ),
+                ).paddingOnly(bottom: 14),
                 Text(
                   translate(
                     _emptyMessages[widget.peers.loadEvent] ?? 'Empty',
                   ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Theme.of(context).tabBarTheme.labelColor,
+                    fontSize: 13,
+                    height: 1.4,
+                    color: Theme.of(context).hintColor,
                   ),
                 ),
               ],

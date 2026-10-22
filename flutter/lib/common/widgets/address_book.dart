@@ -213,7 +213,10 @@ class _AddressBookState extends State<AddressBook> {
                 message: gFFI.abModel.translatedName(e),
                 child: Text(
                   gFFI.abModel.translatedName(e),
-                  style: button ? null : TextStyle(fontSize: 14.0),
+                  // Altunakar: düğmede tema varsayılanı firma panelinin yazılarından iri kalıyordu.
+                  style: button
+                      ? TextStyle(fontSize: 14.0, fontWeight: FontWeight.w600)
+                      : TextStyle(fontSize: 14.0),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: button ? TextAlign.center : null,

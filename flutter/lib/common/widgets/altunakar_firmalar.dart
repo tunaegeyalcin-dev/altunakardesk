@@ -414,44 +414,78 @@ class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
 
   Widget _ustCubuk(BuildContext context, bool duzenlenir) {
     final ipucu = Theme.of(context).hintColor;
-    return Row(children: [
-      Expanded(
-        child: SizedBox(
-          height: 36,
-          child: TextField(
-            controller: _arama,
-            onChanged: (v) => _aramaMetni.value = v,
-            style: const TextStyle(fontSize: 13.5),
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: _metin('altunakar_ara_ipucu', 'altunakar_ara_ipucu_kisisel'),
-              hintStyle: TextStyle(fontSize: 13, color: ipucu),
-              prefixIcon: Icon(Icons.search, size: 18, color: ipucu),
-              prefixIconConstraints: const BoxConstraints(minWidth: 36),
-              suffixIcon: _arama.text.isEmpty
-                  ? null
-                  : InkWell(onTap: _aramayiTemizle, child: Icon(Icons.close, size: 16, color: ipucu)),
-              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ).workaroundFreezeLinuxMint(),
+    final arama = SizedBox(
+      height: 36,
+      child: TextField(
+        controller: _arama,
+        onChanged: (v) => _aramaMetni.value = v,
+        style: const TextStyle(fontSize: 13.5),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: _metin('altunakar_ara_ipucu', 'altunakar_ara_ipucu_kisisel'),
+          hintStyle: TextStyle(fontSize: 13, color: ipucu),
+          prefixIcon: Icon(Icons.search, size: 18, color: ipucu),
+          prefixIconConstraints: const BoxConstraints(minWidth: 36),
+          suffixIcon: _arama.text.isEmpty
+              ? null
+              : InkWell(onTap: _aramayiTemizle, child: Icon(Icons.close, size: 16, color: ipucu)),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-      ),
-      if (duzenlenir) ...[
+      ).workaroundFreezeLinuxMint(),
+    );
+    if (!duzenlenir) return arama.paddingSymmetric(horizontal: 14, vertical: 10);
+    // Düğmeler arama kutusuyla aynı boyda, sayfanın öbür düğmeleriyle aynı yazıda (tema
+    // varsayılanı belirgin büyük kalıyordu). Dar alanda yalnız simge kalır; arama kutusu
+    // tek simgeye inmesin.
+    const yazi = TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600);
+    final kose = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
+    final firmaAdi = _metin('altunakar_firma_ekle', 'altunakar_grup_ekle');
+    final cihazAdi = translate('altunakar_cihaz_ekle');
+    return LayoutBuilder(builder: (context, c) {
+      final dar = c.maxWidth < 520;
+      final firma = dar
+          ? OutlinedButton(
+              onPressed: widget.firmaEkle,
+              style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(36, 36), padding: EdgeInsets.zero, shape: kose),
+              child: const Icon(Icons.business_outlined, size: 17),
+            )
+          : OutlinedButton.icon(
+              onPressed: widget.firmaEkle,
+              style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: kose,
+                  textStyle: yazi),
+              icon: const Icon(Icons.business_outlined, size: 16),
+              label: Text(firmaAdi),
+            );
+      final cihaz = dar
+          ? ElevatedButton(
+              onPressed: widget.cihazEkle,
+              style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(36, 36), padding: EdgeInsets.zero, shape: kose),
+              child: const Icon(Icons.add, size: 18),
+            )
+          : ElevatedButton.icon(
+              onPressed: widget.cihazEkle,
+              style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: kose,
+                  textStyle: yazi),
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(cihazAdi),
+            );
+      return Row(children: [
+        Expanded(child: arama),
         const SizedBox(width: 10),
-        OutlinedButton.icon(
-          onPressed: widget.firmaEkle,
-          icon: const Icon(Icons.business_outlined, size: 16),
-          label: Text(_metin('altunakar_firma_ekle', 'altunakar_grup_ekle')),
-        ),
+        SizedBox(height: 36, child: dar ? Tooltip(message: firmaAdi, child: firma) : firma),
         const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: widget.cihazEkle,
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(translate('altunakar_cihaz_ekle')),
-        ),
-      ],
-    ]).paddingSymmetric(horizontal: 14, vertical: 10);
+        SizedBox(height: 36, child: dar ? Tooltip(message: cihazAdi, child: cihaz) : cihaz),
+      ]);
+    }).paddingSymmetric(horizontal: 14, vertical: 10);
   }
 
   Widget _sutunBasliklari(BuildContext context) {
@@ -466,7 +500,6 @@ class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
   }
 
   Widget _bosEkran(BuildContext context, bool defterBos, bool firmaSecili, bool aramaVar, bool duzenlenir) {
-    final ipucu = Theme.of(context).hintColor;
     final String baslik, metin;
     IconData ikon = Icons.devices_other_outlined;
     if (aramaVar) {
@@ -480,35 +513,53 @@ class _AltunakarDefterGorunumuState extends State<AltunakarDefterGorunumu> {
       baslik = _metin('altunakar_bos_firma_baslik', 'altunakar_bos_grup_baslik');
       metin = translate('altunakar_bos_firma_metin');
     }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.10),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(ikon, size: 26, color: Theme.of(context).colorScheme.primary),
-          ),
-          const SizedBox(height: 14),
-          Text(baslik,
-              textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          Text(metin, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: ipucu, height: 1.4)),
-          const SizedBox(height: 16),
-          if (aramaVar)
-            OutlinedButton(onPressed: _aramayiTemizle, child: Text(translate('altunakar_aramayi_temizle')))
-          else if (duzenlenir)
-            ElevatedButton.icon(
-              onPressed: widget.cihazEkle,
-              icon: const Icon(Icons.add, size: 18),
-              label: Text(translate('altunakar_cihaz_ekle')),
-            ),
-        ]).paddingAll(24),
+    // Alan kısaysa ortalı kalır ama kayar; düğme ve açıklama kesilmesin.
+    return LayoutBuilder(
+      builder: (context, c) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: c.maxHeight),
+          child: Center(child: _bosEkranIcerik(context, ikon, baslik, metin, aramaVar, duzenlenir)),
+        ),
       ),
+    );
+  }
+
+  Widget _bosEkranIcerik(BuildContext context, IconData ikon, String baslik, String metin,
+      bool aramaVar, bool duzenlenir) {
+    final ipucu = Theme.of(context).hintColor;
+    const yazi = TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600);
+    final kose = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 380),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(ikon, size: 26, color: Theme.of(context).colorScheme.primary),
+        ),
+        const SizedBox(height: 14),
+        Text(baslik,
+            textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text(metin, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: ipucu, height: 1.4)),
+        const SizedBox(height: 16),
+        if (aramaVar)
+          OutlinedButton(
+              onPressed: _aramayiTemizle,
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), shape: kose, textStyle: yazi),
+              child: Text(translate('altunakar_aramayi_temizle')))
+        else if (duzenlenir)
+          ElevatedButton.icon(
+            onPressed: widget.cihazEkle,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 36), shape: kose, textStyle: yazi),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(translate('altunakar_cihaz_ekle')),
+          ),
+      ]).paddingAll(24),
     );
   }
 }
