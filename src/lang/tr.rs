@@ -839,5 +839,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_site_dili", "tr"),
         ("altunakar_kopyala", "Kopyala"),
         ("altunakar_yenile", "Yenile"),
+        ("altunakar_program_dili", "Program dili"),
+        ("altunakar_sistem_dili", "Sistem dili"),
     ].iter().cloned().collect();
 }
