@@ -39,6 +39,7 @@ const double _kContentFontSize = 15;
 const Color _accentColor = MyTheme.accent;
 const String _kSettingPageControllerTag = 'settingPageController';
 const String _kSettingPageTabKeyTag = 'settingPageTabKey';
+const String _kGelismisAyarlar = 'altunakar_gelismis_ayarlar';
 
 class _TabInfo {
   late final SettingsTabKey key;
@@ -80,6 +81,23 @@ class DesktopSettingPage extends StatefulWidget {
     SettingsTabKey.about,
   ];
 
+  // Altunakar: sade görünüm varsayılan; "Gelişmiş ayarları göster" teknik sekmeleri
+  // (Ağ, Görüntü, Yazıcı) ve kartları açar. Seçim bu bilgisayarda hatırlanır.
+  // Sayfalar hep yerinde durur (sıra numaraları değişmez); yalnız sol liste süzülür.
+  static final RxBool gelismis =
+      (bind.mainGetLocalOption(key: _kGelismisAyarlar) == 'Y').obs;
+
+  static bool gelismisSekme(SettingsTabKey k) =>
+      k == SettingsTabKey.network ||
+      k == SettingsTabKey.display ||
+      k == SettingsTabKey.printer;
+
+  static void gelismisAyarla(bool v) {
+    if (gelismis.value == v) return;
+    gelismis.value = v;
+    bind.mainSetLocalOption(key: _kGelismisAyarlar, value: v ? 'Y' : '');
+  }
+
   DesktopSettingPage({Key? key, required this.initialTabkey}) : super(key: key);
 
   @override
@@ -92,6 +110,7 @@ class DesktopSettingPage extends StatefulWidget {
       if (index == -1) {
         return;
       }
+      if (gelismisSekme(page)) gelismisAyarla(true);
       if (Get.isRegistered<PageController>(tag: _kSettingPageControllerTag) &&
           Get.isRegistered<Rx<SettingsTabKey>>(tag: _kSettingPageTabKeyTag)) {
         DesktopTabPage.onAddSetting(initialPage: page);
@@ -131,6 +150,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
       initialIndex = 0;
     }
     selectedTab = DesktopSettingPage.tabKeys[initialIndex].obs;
+    if (DesktopSettingPage.gelismisSekme(selectedTab.value)) {
+      DesktopSettingPage.gelismisAyarla(true);
+    }
     Get.put<Rx<SettingsTabKey>>(selectedTab, tag: _kSettingPageTabKeyTag);
     controller = PageController(initialPage: initialIndex);
     Get.put<PageController>(controller, tag: _kSettingPageControllerTag);
@@ -182,7 +204,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
 
   List<_TabInfo> _settingTabs() {
     final List<_TabInfo> settingTabs = <_TabInfo>[];
+    final gelismis = DesktopSettingPage.gelismis.value;
     for (final tab in DesktopSettingPage.tabKeys) {
+      if (!gelismis && DesktopSettingPage.gelismisSekme(tab)) continue;
       switch (tab) {
         case SettingsTabKey.general:
           settingTabs.add(_TabInfo(
@@ -279,12 +303,14 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
         children: <Widget>[
           SizedBox(
             width: _kTabWidth,
-            child: Column(
-              children: [
-                _header(context),
-                Flexible(child: _listView(tabs: _settingTabs())),
-              ],
-            ),
+            child: Obx(() => Column(
+                  children: [
+                    _header(context),
+                    Flexible(child: _listView(tabs: _settingTabs())),
+                    const Divider(height: 1).marginSymmetric(horizontal: 12),
+                    _gelismisDugmesi().marginOnly(top: 6, bottom: 10),
+                  ],
+                )),
           ),
           const VerticalDivider(width: 1),
           Expanded(
@@ -299,6 +325,32 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           )
         ],
       ),
+    );
+  }
+
+  void _gelismisDegistir(bool v) {
+    DesktopSettingPage.gelismisAyarla(v);
+    if (!v && DesktopSettingPage.gelismisSekme(selectedTab.value)) {
+      final hedef = DesktopSettingPage.tabKeys
+          .firstWhere((k) => !DesktopSettingPage.gelismisSekme(k));
+      controller.jumpToPage(DesktopSettingPage.tabKeys.indexOf(hedef));
+      selectedTab.value = hedef;
+    }
+  }
+
+  Widget _gelismisDugmesi() {
+    final v = DesktopSettingPage.gelismis.value;
+    return InkWell(
+      onTap: () => _gelismisDegistir(!v),
+      child: Row(children: [
+        Checkbox(value: v, onChanged: (b) => _gelismisDegistir(b ?? false)),
+        Expanded(
+          child: Text(
+            translate('altunakar-gelismis-ayarlar'),
+            style: const TextStyle(fontSize: 13.5),
+          ),
+        ),
+      ]).marginOnly(left: 8, right: 8),
     );
   }
 
@@ -409,19 +461,23 @@ class _GeneralState extends State<_General> {
   @override
   Widget build(BuildContext context) {
     final scrollController = ScrollController();
-    return ListView(
-      controller: scrollController,
-      children: [
-        if (!isWeb) service(),
-        theme(),
-        _Card(title: 'Language', children: [language()]),
-        if (!isWeb) hwcodec(),
-        if (!isWeb) audio(context),
-        if (!isWeb) record(context),
-        if (!isWeb) WaylandCard(),
-        other()
-      ],
-    ).marginOnly(bottom: _kListViewBottomMargin);
+    return Obx(() {
+      // Altunakar: sade görünümde yalnız tema, dil ve "Diğer"in kısa hâli.
+      final gelismis = DesktopSettingPage.gelismis.value;
+      return ListView(
+        controller: scrollController,
+        children: [
+          if (!isWeb) service(gelismis),
+          theme(),
+          _Card(title: 'Language', children: [language()]),
+          if (!isWeb && gelismis) hwcodec(),
+          if (!isWeb && gelismis) audio(context),
+          if (!isWeb && gelismis) record(context),
+          if (!isWeb && gelismis) WaylandCard(),
+          other(gelismis)
+        ],
+      ).marginOnly(bottom: _kListViewBottomMargin);
+    });
   }
 
   Widget theme() {
@@ -451,7 +507,7 @@ class _GeneralState extends State<_General> {
     ]);
   }
 
-  Widget service() {
+  Widget service(bool gelismis) {
     if (bind.isOutgoingOnly()) {
       return const Offstage();
     }
@@ -460,7 +516,8 @@ class _GeneralState extends State<_General> {
         bind.mainGetBuildinOption(key: kOptionHideStopService) == 'Y';
 
     return Obx(() {
-      if (hideStopService && !serviceStop.value) {
+      // Altunakar: sade görünümde "Durdur" yok; hizmet durmuşsa "Başlat" görünür.
+      if ((hideStopService || !gelismis) && !serviceStop.value) {
         return const Offstage();
       }
 
@@ -479,11 +536,43 @@ class _GeneralState extends State<_General> {
     });
   }
 
-  Widget other() {
+  Widget other(bool gelismis) {
     final incomingOnly = bind.isIncomingOnly();
     final outgoingOnly = bind.isOutgoingOnly();
     final showAutoUpdate = (isWindows && bind.mainIsInstalled()) ||
     (isMacOS && bind.mainIsInstalled() && bind.mainIsInstalledDaemon(prompt: false) && !bind.isCustomClient());
+    final otomatikGuncelleme = showAutoUpdate
+        ? _OptionCheckBox(
+            context,
+            'Auto update',
+            kOptionAllowAutoUpdate,
+            isServer: true,
+          )
+        : null;
+    // Altunakar: sohbet geçmişi kaydı (Belgeler/AltunakarDesk/Sohbetler).
+    final sohbetKaydi = <Widget>[
+      if (!isWeb && !incomingOnly)
+        _OptionCheckBox(
+            context,
+            'Save chat history with computers I connect to',
+            'altunakar-sohbet-kaydi',
+            isServer: false),
+      if (!isWeb && !outgoingOnly)
+        _OptionCheckBox(
+            context,
+            'Save chat history with people who connect to this computer',
+            'allow-altunakar-sohbet-kaydi-gelen',
+            isServer: false),
+    ];
+    if (!gelismis) {
+      final sade = [
+        if (otomatikGuncelleme != null) otomatikGuncelleme,
+        ...sohbetKaydi,
+      ];
+      return sade.isEmpty
+          ? const Offstage()
+          : _Card(title: 'Other', children: sade);
+    }
     final children = <Widget>[
       if (!isWeb && !incomingOnly)
         _OptionCheckBox(context, 'Confirm before closing multiple tabs',
@@ -558,13 +647,7 @@ class _GeneralState extends State<_General> {
           kOptionEnableCheckUpdate,
           isServer: false,
         ),
-      if (showAutoUpdate)
-        _OptionCheckBox(
-          context,
-          'Auto update',
-          kOptionAllowAutoUpdate,
-          isServer: true,
-        ),
+      if (otomatikGuncelleme != null) otomatikGuncelleme,
       if (isWindows && !outgoingOnly)
         _OptionCheckBox(
           context,
@@ -670,21 +753,7 @@ class _GeneralState extends State<_General> {
         ).marginOnly(left: _kCheckBoxLeftMargin * 3),
       ));
     }
-    // Altunakar: sohbet geçmişi kaydı (Belgeler/AltunakarDesk/Sohbetler).
-    if (!isWeb && !bind.isIncomingOnly()) {
-      children.add(_OptionCheckBox(
-          context,
-          'Save chat history with computers I connect to',
-          'altunakar-sohbet-kaydi',
-          isServer: false));
-    }
-    if (!isWeb && !bind.isOutgoingOnly()) {
-      children.add(_OptionCheckBox(
-          context,
-          'Save chat history with people who connect to this computer',
-          'allow-altunakar-sohbet-kaydi-gelen',
-          isServer: false));
-    }
+    children.addAll(sohbetKaydi);
     return _Card(title: 'Other', children: children);
   }
 
@@ -1009,14 +1078,19 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
             }),
             preventMouseKeyBuilder(
               block: locked,
-              child: Column(children: [
-                permissions(context),
-                password(context),
-                _Card(title: '2FA', children: [tfa()]),
-                if (!isChangeIdDisabled())
-                  _Card(title: 'ID', children: [changeId()]),
-                more(context),
-              ]),
+              // Altunakar: sade görünümde izinler, şifre ve 2FA; numara ve
+              // "Güvenlik" kartı (doğrudan IP, beyaz liste vb.) gelişmişte.
+              child: Obx(() {
+                final gelismis = DesktopSettingPage.gelismis.value;
+                return Column(children: [
+                  permissions(context),
+                  password(context),
+                  _Card(title: '2FA', children: [tfa()]),
+                  if (gelismis && !isChangeIdDisabled())
+                    _Card(title: 'ID', children: [changeId()]),
+                  if (gelismis) more(context),
+                ]);
+              }),
             ),
           ],
         )).marginOnly(bottom: _kListViewBottomMargin);
@@ -1934,7 +2008,23 @@ class _NetworkState extends State<_Network> with AutomaticKeepAliveClientMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!hideServer)
+              // Altunakar: sunucu kilitliyse (config::altunakar_ust_ayarlar) düzenleme
+              // penceresi yerine adres ve kilit gösterilir.
+              if (!hideServer && isOptionFixed('custom-rendezvous-server'))
+                listTile(
+                  icon: Icons.dns_outlined,
+                  title: 'ID/Relay Server',
+                  trailing: Tooltip(
+                    message: translate('altunakar-sabit-ayar-ipucu'),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(bind.mainGetOptionSync(
+                          key: 'custom-rendezvous-server')),
+                      const Icon(Icons.lock_outline, size: 16)
+                          .marginOnly(left: 6),
+                    ]),
+                  ),
+                )
+              else if (!hideServer)
                 listTile(
                   icon: Icons.dns_outlined,
                   title: 'ID/Relay Server',
@@ -2766,7 +2856,7 @@ Widget _OptionCheckBox(
     enabled = false;
   }
 
-  return GestureDetector(
+  final kutu = GestureDetector(
     child: Obx(
       () => Row(
         children: [
@@ -2781,8 +2871,11 @@ Widget _OptionCheckBox(
           Expanded(
               child: Text(
             translate(label),
-            style: TextStyle(color: disabledTextColor(context, enabled)),
-          ))
+            style: TextStyle(
+                color: disabledTextColor(context, enabled && !isOptFixed)),
+          )),
+          // Altunakar: kilitli (OVERWRITE) ayar gri ve kilit simgeli görünür.
+          if (isOptFixed) const Icon(Icons.lock_outline, size: 16),
         ],
       ),
     ).marginOnly(left: _kCheckBoxLeftMargin),
@@ -2792,6 +2885,9 @@ Widget _OptionCheckBox(
           }
         : null,
   );
+  return isOptFixed
+      ? Tooltip(message: translate('altunakar-sabit-ayar-ipucu'), child: kutu)
+      : kutu;
 }
 
 // ignore: non_constant_identifier_names

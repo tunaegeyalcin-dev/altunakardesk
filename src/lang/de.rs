@@ -845,6 +845,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_sohbet_karsi", "Gegenseite"),
         ("Unattended access permissions", "Berechtigungen für unbeaufsichtigten Zugriff"),
         ("altunakar-gozetimsiz-ipucu", "Gilt für Verbindungen, die mit dem permanenten Passwort ohne Bestätigung geöffnet werden. Nicht geänderte Berechtigungen verhalten sich wie unter Berechtigungen oben."),
+        ("altunakar-gelismis-ayarlar", "Erweiterte Einstellungen anzeigen"),
+        ("altunakar-sabit-ayar-ipucu", "Diese Einstellung ist aus Sicherheitsgründen von Altunakar festgelegt und ändert sich nur mit einer neuen Version."),
         ("Same as interactive access", "Wie interaktiver Zugriff"),
         ("Send logs to Altunakar", "Protokolle an Altunakar senden"),
         ("altunakar-kayit-aciklama", "Damit wir das Problem prüfen können, werden die Programmprotokolle der letzten 3 Tage an Altunakar gesendet. Sie enthalten keine Passwörter oder Bildschirmfotos; Computername, AltunakarDesk-Nummer und Verbindungsdaten (einschließlich IP-Adressen) können enthalten sein. Möchten Sie sie senden?"),

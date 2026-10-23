@@ -845,6 +845,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_sohbet_karsi", "Karşı taraf"),
         ("Unattended access permissions", "Gözetimsiz erişim izinleri"),
         ("altunakar-gozetimsiz-ipucu", "Kalıcı şifreyle, kimse onaylamadan açılan bağlantılarda geçerlidir. Değiştirmediğiniz izin yukarıdaki İzinler gibi davranır."),
+        ("altunakar-gelismis-ayarlar", "Gelişmiş ayarları göster"),
+        ("altunakar-sabit-ayar-ipucu", "Bu ayar güvenlik için Altunakar tarafından sabitlenmiştir; yalnızca yeni sürümle değişir."),
         ("Same as interactive access", "Etkileşimli erişimle aynı yap"),
         ("Send logs to Altunakar", "Kayıtları Altunakar'a gönder"),
         ("altunakar-kayit-aciklama", "Sorunu inceleyebilmemiz için programın son 3 günlük kayıtları Altunakar'a gönderilecek. Kayıtlar şifre ya da ekran görüntüsü içermez; bilgisayar adı, AltunakarDesk numarası ve bağlantı bilgileri (IP adresleri dahil) bulunabilir. Göndermek istiyor musunuz?"),

@@ -791,6 +791,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar_sohbet_karsi", ""),
         ("Unattended access permissions", ""),
         ("altunakar-gozetimsiz-ipucu", ""),
+        ("altunakar-gelismis-ayarlar", ""),
+        ("altunakar-sabit-ayar-ipucu", ""),
         ("Same as interactive access", ""),
         ("Send logs to Altunakar", ""),
         ("altunakar-kayit-aciklama", ""),
