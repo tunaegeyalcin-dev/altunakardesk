@@ -847,6 +847,29 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
   List<Widget> _toolbarItems(_ToolbarEdge edge) {
     final List<Widget> toolbarItems = [];
     toolbarItems.add(_PinMenu(state: widget.state));
+    // Ücretsiz mod geri sayımı (lisanssız giden bağlantı; FfiModel kurar).
+    toolbarItems.add(Obx(() {
+      final kalan = widget.ffi.ffiModel.altunakarKalanSn.value;
+      if (kalan == null) return const Offstage();
+      final mmss =
+          '${(kalan ~/ 60).toString().padLeft(2, '0')}:${(kalan % 60).toString().padLeft(2, '0')}';
+      final renk = kalan <= 60 ? Colors.red : Colors.orange;
+      return Container(
+        margin: EdgeInsets.symmetric(horizontal: _ToolbarTheme.buttonHMargin),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: renk.withOpacity(.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.timer_outlined, size: 14, color: renk),
+          const SizedBox(width: 4),
+          Text('${translate('altunakar-ucretsiz')} $mmss',
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: renk)),
+        ]),
+      );
+    }));
     toolbarItems.add(Obx(() {
       final privacyModeState = PrivacyModeState.find(widget.id);
       if ((privacyModeState.isEmpty ||

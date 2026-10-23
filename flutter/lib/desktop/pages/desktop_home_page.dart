@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
+import '../../common/altunakar_lisans.dart';
 import '../widgets/button.dart';
 
 class DesktopHomePage extends StatefulWidget {
@@ -49,6 +50,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   var watchIsInputMonitoring = false;
   var watchIsCanRecordAudio = false;
   Timer? _updateTimer;
+  Timer? _lisansTazelemeTimer; // abonelik belgesi 12 saatte bir tazelenir
+  final _lisansTik = 0.obs; // tazeleme sonrasi bandi yeniden kurar
   bool isCardClosed = false;
 
   final RxBool _editHover = false.obs;
@@ -182,6 +185,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               if (!bind.isOutgoingOnly()) buildPresetPasswordWarning(),
               Obx(() => buildHelpCards(stateGlobal.updateUrl.value))
                   .paddingSymmetric(horizontal: 28),
+              _altunakarLisansBandi(context),
               if (!bind.isOutgoingOnly())
                 _altunakarBuPcKarti(context)
                     .paddingOnly(left: 28, top: 18, right: 28),
@@ -195,6 +199,46 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }),
       ),
     );
+  }
+
+  // Abonelik bitisine 7 gun kala (ve esneme doneminde) sari hatirlatma seridi
+  // (spec 2026-10-23). Lisans yoksa ya da bitis uzaksa gorunmez.
+  Widget _altunakarLisansBandi(BuildContext context) {
+    return Obx(() {
+      _lisansTik.value; // tazeleme sonrasi yeniden kur
+      final d = altunakarLisansDurum();
+      if (d['durum'] == 'yok') return const Offstage();
+      final kalan = (d['kalan_gun'] ?? 99) as int;
+      final esneme = d['durum'] == 'esneme';
+      if (!esneme && kalan > 7) return const Offstage();
+      final metin = esneme
+          ? translate('altunakar-lisans-esneme-band')
+          : translate('altunakar-lisans-kalan-band')
+              .replaceAll('{gun}', '$kalan');
+      return Container(
+        margin: const EdgeInsets.only(left: 28, right: 28, top: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7E0),
+          border: Border.all(color: const Color(0xFFE8D48A)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(children: [
+          const Icon(Icons.timer_outlined, size: 18, color: Color(0xFF8A6D1A)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(metin,
+                  style: const TextStyle(
+                      fontSize: 13, color: Color(0xFF6B5512)))),
+          TextButton(
+            onPressed: () => launchUrl(
+                Uri.parse('https://www.altunakar.net/uzak-destek/hesabim'),
+                mode: LaunchMode.externalApplication),
+            child: Text(translate('altunakar-yenile-dugme')),
+          ),
+        ]),
+      );
+    });
   }
 
   Widget _altunakarKucukDugme(BuildContext context, String yazi, VoidCallback f) {
@@ -1017,6 +1061,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   @override
   void initState() {
     super.initState();
+    // Abonelik: acilista (5 sn sonra) ve 12 saatte bir belgeyi tazele.
+    Future.delayed(const Duration(seconds: 5), () async {
+      await altunakarLisansTazele();
+      _lisansTik.value++;
+    });
+    _lisansTazelemeTimer = Timer.periodic(const Duration(hours: 12), (_) async {
+      await altunakarLisansTazele();
+      _lisansTik.value++;
+    });
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
       final error = await bind.mainGetError();
@@ -1192,6 +1245,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _uniLinksSubscription?.cancel();
     Get.delete<RxBool>(tag: 'stop-service');
     _updateTimer?.cancel();
+    _lisansTazelemeTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

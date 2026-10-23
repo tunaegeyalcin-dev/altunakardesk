@@ -30,6 +30,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 
 import '../consts.dart';
+import 'common/altunakar_bekleme.dart';
 import 'common/widgets/overlay.dart';
 import 'mobile/pages/file_manager_page.dart';
 import 'mobile/pages/remote_page.dart';
@@ -2365,10 +2366,13 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
     switch (type) {
       case UriLinkType.remoteDesktop:
         Future.delayed(Duration.zero, () {
-          rustDeskWinManager.newRemoteDesktop(id!,
-              password: password,
-              switchUuid: switchUuid,
-              forceRelay: forceRelay);
+          // Ücretsiz mod tanıtım beklemesi: adres bağlantısı da kapıdan geçer.
+          altunakarBeklemeKapisi(() {
+            rustDeskWinManager.newRemoteDesktop(id!,
+                password: password,
+                switchUuid: switchUuid,
+                forceRelay: forceRelay);
+          });
         });
         break;
       case UriLinkType.fileTransfer:
@@ -2578,10 +2582,13 @@ connectMainDesktop(String id,
         connToken: connToken,
         forceRelay: forceRelay);
   } else {
-    await rustDeskWinManager.newRemoteDesktop(id,
-        password: password,
-        isSharedPassword: isSharedPassword,
-        forceRelay: forceRelay);
+    // Ücretsiz mod tanıtım beklemesi (spec 2026-10-23): yalnız uzak masaüstü.
+    altunakarBeklemeKapisi(() async {
+      await rustDeskWinManager.newRemoteDesktop(id,
+          password: password,
+          isSharedPassword: isSharedPassword,
+          forceRelay: forceRelay);
+    });
   }
 }
 
