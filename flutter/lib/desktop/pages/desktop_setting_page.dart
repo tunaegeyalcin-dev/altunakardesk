@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/common/altunakar_lisans.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/common/widgets/setting_widgets.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -2382,6 +2383,8 @@ class _Account extends StatefulWidget {
 }
 
 class _AccountState extends State<_Account> {
+  final _lisansYenile = 0.obs;
+
   @override
   Widget build(BuildContext context) {
     final scrollController = ScrollController();
@@ -2389,8 +2392,95 @@ class _AccountState extends State<_Account> {
       controller: scrollController,
       children: [
         _Card(title: 'Account', children: [accountAction(), useInfo()]),
+        _Card(
+            title: 'altunakar-lisans-baslik',
+            children: [lisansKarti(context)]),
       ],
     ).marginOnly(bottom: _kListViewBottomMargin);
+  }
+
+  // Abonelik lisansı (spec 2026-10-23): anahtar sunucuda doğrulanır, imzalı
+  // belge Rust LocalConfig'te durur; buradaki görünüm belgeden okunur.
+  Widget lisansKarti(BuildContext context) {
+    return Obx(() {
+      _lisansYenile.value; // belge değişince yeniden kur
+      final d = altunakarLisansDurum();
+      if (d['durum'] == 'yok') {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(translate('altunakar-lisans-yok'))
+                .marginOnly(left: 18, top: 8, right: 18),
+            _Button('altunakar-lisans-gir',
+                () => _altunakarLisansDialog(_lisansYenile)),
+          ],
+        );
+      }
+      final bitisSn = (d['bitis'] ?? 0) as int;
+      final bitis = DateTime.fromMillisecondsSinceEpoch(bitisSn * 1000);
+      final kalanGun = (d['kalan_gun'] ?? 0) as int;
+      final suresiz = kalanGun > 20000; // sahip firması
+      final esneme = d['durum'] == 'esneme';
+      final paket = (d['paket'] ?? '').toString();
+      final paketAd = paket.isEmpty
+          ? ''
+          : paket[0].toUpperCase() + paket.substring(1);
+      String bicim(DateTime t) =>
+          '${t.day.toString().padLeft(2, '0')}.${t.month.toString().padLeft(2, '0')}.${t.year}';
+      final satirStil = TextStyle(
+          fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.verified_outlined,
+                      size: 20,
+                      color: esneme ? Colors.orange : Colors.green),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text((d['firma'] ?? '').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600))),
+                ]),
+                const SizedBox(height: 6),
+                Text(
+                    '$paketAd · ${d['koltuk'] ?? 1} ${translate('altunakar-koltuk')}',
+                    style: satirStil),
+                Text(
+                    suresiz
+                        ? translate('altunakar-lisans-suresiz')
+                        : '${translate('altunakar-bitis')}: ${bicim(bitis)}',
+                    style: satirStil),
+                if (esneme)
+                  Text(translate('altunakar-lisans-esneme'),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600))
+                      .marginOnly(top: 4),
+              ],
+            ),
+          ).marginOnly(left: 18, top: 12, right: 18),
+          Row(children: [
+            _Button('altunakar-lisans-degistir',
+                () => _altunakarLisansDialog(_lisansYenile)),
+            _Button('altunakar-lisans-kaldir',
+                () => _altunakarLisansKaldirOnay(_lisansYenile)),
+          ]),
+        ],
+      );
+    });
   }
 
   Widget accountAction() {
@@ -3464,6 +3554,86 @@ void changeSocks5Proxy() async {
 
 /// Altunakar: "Kayıtları Altunakar'a gönder". Önce ne gönderileceğini söyler, onay alınca gönderir
 /// ve başvuru kodunu gösterir (Rust: common::altunakar_kayit_gonder).
+void _altunakarLisansDialog(RxInt yenile) {
+  final kontrol = TextEditingController(
+      text: bind.mainGetLocalOption(key: kAltunakarLisansAnahtar));
+  var calisiyor = false;
+  String? hata;
+  gFFI.dialogManager.show((setState, close, context) {
+    dogrula() async {
+      final anahtar = kontrol.text.trim();
+      if (anahtar.isEmpty) return;
+      setState(() {
+        calisiyor = true;
+        hata = null;
+      });
+      try {
+        await altunakarLisansDogrula(anahtar);
+        yenile.value++;
+        close();
+        showToast(translate('altunakar-lisans-tamam'));
+      } catch (e) {
+        setState(() {
+          calisiyor = false;
+          hata = e.toString();
+        });
+      }
+    }
+
+    return CustomAlertDialog(
+      title: Text(translate('altunakar-lisans-gir')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(translate('altunakar-lisans-aciklama')),
+          TextField(
+            controller: kontrol,
+            autofocus: true,
+            enabled: !calisiyor,
+            textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(letterSpacing: 1.2),
+            decoration:
+                const InputDecoration(hintText: 'ALTD-XXXX-XXXX-XXXX'),
+            onSubmitted: (_) => calisiyor ? null : dogrula(),
+          ).marginOnly(top: 12),
+          if (hata != null)
+            SelectionArea(
+                    child: Text(hata!,
+                        style: const TextStyle(color: Colors.red)))
+                .marginOnly(top: 10),
+          if (calisiyor) const LinearProgressIndicator().marginOnly(top: 12),
+        ],
+      ),
+      actions: [
+        dialogButton('Cancel',
+            onPressed: calisiyor ? null : close, isOutline: true),
+        dialogButton('altunakar-dogrula',
+            onPressed: calisiyor ? null : dogrula),
+      ],
+      onCancel: calisiyor ? null : close,
+    );
+  });
+}
+
+void _altunakarLisansKaldirOnay(RxInt yenile) {
+  gFFI.dialogManager.show((setState, close, context) {
+    return CustomAlertDialog(
+      title: Text(translate('altunakar-lisans-kaldir')),
+      content: Text(translate('altunakar-lisans-kaldir-aciklama')),
+      actions: [
+        dialogButton('Cancel', onPressed: close, isOutline: true),
+        dialogButton('OK', onPressed: () async {
+          await altunakarLisansKaldir();
+          yenile.value++;
+          close();
+        }),
+      ],
+      onCancel: close,
+    );
+  });
+}
+
 void _altunakarKayitGonder() {
   var gonderiliyor = false;
   String? sonuc;

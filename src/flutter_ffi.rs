@@ -1787,6 +1787,12 @@ pub fn main_get_last_remote_id() -> String {
 }
 
 /// Altunakar: "Kayıtları Altunakar'a gönder" ("ok:<kod>" / "error:<neden>"). Dart'ta Future.
+/// Lisans durumunu JSON olarak doner (abonelik; LocalConfig'teki imzali
+/// belgeyi dogrular). Ayri penceredeki Dart motorlari da bunu cagirir.
+pub fn main_altunakar_lisans_durum() -> SyncReturn<String> {
+    SyncReturn(crate::common::altunakar_lisans_durum_json())
+}
+
 pub fn main_altunakar_kayit_gonder() -> String {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     return crate::common::altunakar_kayit_gonder();

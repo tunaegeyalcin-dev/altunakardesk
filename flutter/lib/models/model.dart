@@ -38,6 +38,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:vector_math/vector_math.dart' show Vector2;
 
 import '../common.dart';
+import '../common/altunakar_lisans.dart';
 import '../utils/image.dart' as img;
 import '../common/widgets/dialog.dart';
 import 'input_model.dart';
@@ -134,6 +135,11 @@ class FfiModel with ChangeNotifier {
   bool isRefreshing = false;
 
   Timer? timerScreenshot;
+
+  // Ücretsiz mod: lisanssız GİDEN uzak masaüstü bağlantısı 5 dakikada kesilir
+  // (spec 2026-10-23). null: sınır yok (lisanslı ya da farklı bağlantı türü).
+  Timer? _altunakarSayac;
+  final altunakarKalanSn = RxnInt();
 
   Rect? get rect => _rect;
   bool get isOriginalResolutionSet =>
@@ -261,6 +267,44 @@ class FfiModel with ChangeNotifier {
     clearPermissions();
     waitForImageTimer?.cancel();
     timerScreenshot?.cancel();
+    _altunakarSayac?.cancel();
+    _altunakarSayac = null;
+    altunakarKalanSn.value = null;
+  }
+
+  // Ücretsiz modda giden bağlantı sayacını kurar; süre dolunca bekleme
+  // başlatılır, kullanıcı bilgilendirilir ve bağlantı kapatılır.
+  void _altunakarSinirKur() {
+    final ffi = parent.target;
+    if (ffi == null || ffi.connType != ConnType.defaultConn) return;
+    _altunakarSayac?.cancel();
+    if (altunakarLisansli()) {
+      altunakarKalanSn.value = null;
+      return;
+    }
+    altunakarKalanSn.value = kAltunakarUcretsizSn;
+    _altunakarSayac = Timer.periodic(const Duration(seconds: 1), (t) {
+      final kalan = (altunakarKalanSn.value ?? 1) - 1;
+      altunakarKalanSn.value = kalan;
+      if (kalan <= 0) {
+        t.cancel();
+        _altunakarSureDoldu();
+      }
+    });
+  }
+
+  void _altunakarSureDoldu() {
+    final ffi = parent.target;
+    if (ffi == null) return;
+    altunakarBeklemeBaslat();
+    msgBox(
+        sessionId,
+        'error-nocancel',
+        'altunakar-ucretsiz-baslik',
+        'altunakar-ucretsiz-doldu',
+        'https://www.altunakar.net/uzak-destek/fiyatlandirma',
+        ffi.dialogManager,
+        submitTimeout: 15);
   }
 
   setConnectionType(
@@ -1479,6 +1523,7 @@ class FfiModel with ChangeNotifier {
 
     _pi.isSet.value = true;
     stateGlobal.resetLastResolutionGroupValues(peerId);
+    _altunakarSinirKur();
 
     if (isDesktop || isWebDesktop) {
       // checkDesktopKeyboardMode may change the keyboard mode if the current

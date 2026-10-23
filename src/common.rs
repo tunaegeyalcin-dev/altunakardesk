@@ -1165,6 +1165,47 @@ fn altunakar_kayit_yukle_(govde: Vec<u8>) -> ResultType<String> {
 /// paketler. Windows'ta kurulu programda paketi hizmete verir; hizmet kendi (kullanıcıya kapalı)
 /// kayıtlarını ekleyip gönderir. Olmazsa ve diğer sistemlerde program kendi paketini gönderir.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
+/// Lisans durumu (abonelik, spec 2026-10-23): LocalConfig'teki imzali belgeyi
+/// dogrular, UI'nin kullanacagi JSON'u kurar. Belge yoksa/bozuksa/suresi
+/// gecmisse {"durum":"yok"}; esneme doneminde "esneme". "son" belgenin son
+/// gecerliligi (bitis + 7 gun esneme), "bitis" abonelik bitisi, "kalan_gun"
+/// bitise kalan tam gun (band son 7 gunde gorunur).
+pub fn altunakar_lisans_durum_json() -> String {
+    use hbb_common::config::{Config, LocalConfig};
+    let belge = LocalConfig::get_option("altunakar-lisans-belge");
+    let yok = "{\"durum\":\"yok\"}".to_owned();
+    if belge.is_empty() {
+        return yok;
+    }
+    let simdi = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or_default();
+    let b = match hbb_common::altunakar::lisans_belge_dogrula(
+        &belge,
+        hbb_common::altunakar::EKIP_BILET_PK,
+        &Config::get_id(),
+        simdi,
+    ) {
+        Some(b) => b,
+        None => return yok,
+    };
+    const ESNEME: i64 = 7 * 24 * 3600;
+    let bitis = b.son - ESNEME;
+    let durum = if simdi > bitis { "esneme" } else { "etkin" };
+    let kalan_gun = ((bitis - simdi).max(0)) / 86400;
+    serde_json::json!({
+        "durum": durum,
+        "firma": b.firma,
+        "paket": b.paket,
+        "koltuk": b.koltuk,
+        "son": b.son,
+        "bitis": bitis,
+        "kalan_gun": kalan_gun,
+    })
+    .to_string()
+}
+
 pub fn altunakar_kayit_gonder() -> String {
     let program = altunakar_kayit_paketi("program", &Config::log_path());
     #[cfg(target_os = "windows")]

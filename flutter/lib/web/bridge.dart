@@ -1343,6 +1343,10 @@ class RustdeskImpl {
     return Future.value('error:unsupported');
   }
 
+  String mainAltunakarLisansDurum({dynamic hint}) {
+    return '{"durum":"yok"}';
+  }
+
   Future<void> sessionRestartRemoteDevice(
       {required UuidValue sessionId, dynamic hint}) {
     return Future(() => js.context.callMethod('setByName', ['restart']));
