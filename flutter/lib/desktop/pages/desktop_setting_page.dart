@@ -2251,9 +2251,13 @@ class _DisplayState extends State<_Display> {
     final value = getOtherDefaultSettingOption(key) == 'Y';
     final isOptFixed = isOtherDefaultSettingReadOnly(key);
     onChanged(bool b) async {
+      // Varsayılanı açık olan seçenek kapatılınca "N" yazılır; boş değer varsayılana döner.
+      // Altunakar: ekran düğmeleri (show_monitors_toolbar) da varsayılan açık.
+      final varsayilanAcik =
+          key == kOptionEnableFileCopyPaste || key == kKeyShowMonitorsToolbar;
       await setOtherDefaultSettingOption(
         key,
-        b ? 'Y' : (key == kOptionEnableFileCopyPaste ? 'N' : defaultOptionNo),
+        b ? 'Y' : (varsayilanAcik ? 'N' : defaultOptionNo),
       );
       setState(() {});
     }
