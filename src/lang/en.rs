@@ -341,6 +341,5 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("altunakar-kayit-gonderilemedi", "The logs could not be sent. Please try again a little later or call +90 530 338 21 91."),
         ("altunakar_program_dili", "Program language"),
         ("altunakar_sistem_dili", "System language"),
-        ("altunakar-cerceve-bagli", "Altunakar Support connected"),
     ].iter().cloned().collect();
 }

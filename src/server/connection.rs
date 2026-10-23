@@ -1991,9 +1991,6 @@ impl Connection {
             self.tx_from_authed.clone(),
             self.lr.clone(),
         ));
-        if auth_conn_type == AuthConnType::Remote {
-            self.altunakar_cerceve_ac();
-        }
         self.session_last_recv_time = SESSIONS
             .lock()
             .unwrap()
@@ -5845,39 +5842,13 @@ impl Connection {
         }
     }
 
-    /// Altunakar: karşı ekran katmanı (çerçeve, beyaz tahta) bu sistemde çalışır mı.
+    /// Altunakar: karşı ekran katmanı (beyaz tahta) bu sistemde çalışır mı.
     #[cfg(any(target_os = "windows", target_os = "macos"))]
     fn altunakar_katman_destekli() -> bool {
         #[cfg(target_os = "windows")]
         return crate::platform::windows::is_win_10_or_greater();
         #[cfg(target_os = "macos")]
         return true;
-    }
-
-    /// Altunakar: masaüstü oturumu başlayınca karşı ekranın kenarında çerçeve ve
-    /// "Altunakar Destek bağlı · <ad>" etiketi; oturum bitince kalkar (AuthedConnID düşerken).
-    fn altunakar_cerceve_ac(&self) {
-        #[cfg(any(target_os = "windows", target_os = "macos"))]
-        {
-            use hbb_common::altunakar_cizim as ac;
-            if Config::get_option(ac::SECENEK_CERCEVE) == "N" || !Self::altunakar_katman_destekli() {
-                return;
-            }
-            let ad = self
-                .altunakar_teknisyen
-                .clone()
-                .filter(|a| !a.trim().is_empty())
-                .unwrap_or_else(|| self.lr.my_name.clone());
-            crate::whiteboard::altunakar_gonder(
-                ac::anahtar_cerceve(self.inner.id()),
-                crate::whiteboard::CustomEvent::Cerceve(ac::Cerceve {
-                    etiket: ac::cerceve_etiketi_onekli(
-                        &crate::lang::translate("altunakar-cerceve-bagli".to_owned()),
-                        &ad,
-                    ),
-                }),
-            );
-        }
     }
 
     fn is_authed_remote_conn(&self) -> bool {
@@ -7179,7 +7150,6 @@ mod raii {
                 #[cfg(any(target_os = "windows", target_os = "macos"))]
                 {
                     use hbb_common::altunakar_cizim as ac;
-                    whiteboard::altunakar_kapat(ac::anahtar_cerceve(self.0));
                     whiteboard::altunakar_kapat(ac::anahtar_cizim(self.0));
                 }
             }

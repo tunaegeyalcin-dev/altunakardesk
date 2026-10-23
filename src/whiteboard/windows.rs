@@ -1,6 +1,6 @@
 use super::{
     server::{Ripple, EVENT_PROXY},
-    win_linux::{altunakar_etiket_ciz, altunakar_etiket_yazi_yuzu, create_font_face, draw_text},
+    win_linux::{create_font_face, draw_text},
     Cursor, CustomEvent,
 };
 use hbb_common::{anyhow::anyhow, log, ResultType};
@@ -41,26 +41,11 @@ fn altunakar_boya(pixmap: &mut PixmapMut, noktalar: &[(f32, f32)], argb: u32, ka
     pixmap.stroke_path(&path, &paint, &stroke, Transform::identity(), None);
 }
 
-/// Altunakar: ekranların pencere içindeki dikdörtgenleri ve pencerenin başlangıcı.
-fn altunakar_ekranlar() -> ((f32, f32), Vec<(f32, f32, f32, f32)>) {
-    let kok = super::server::get_displays_rect()
+/// Altunakar: bütün ekranları kaplayan pencerenin başlangıcı; şekil noktaları buna göre kaydırılır.
+fn altunakar_kok() -> (f32, f32) {
+    super::server::get_displays_rect()
         .map(|(x, y, _, _)| (x as f32, y as f32))
-        .unwrap_or((0.0, 0.0));
-    let ekranlar = crate::server::display_service::try_get_displays()
-        .map(|d| {
-            d.iter()
-                .map(|e| {
-                    (
-                        e.origin().0 as f32 - kok.0,
-                        e.origin().1 as f32 - kok.1,
-                        e.width() as f32,
-                        e.height() as f32,
-                    )
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    (kok, ekranlar)
+        .unwrap_or((0.0, 0.0))
 }
 
 pub(super) fn create_event_loop() -> ResultType<()> {
@@ -68,13 +53,6 @@ pub(super) fn create_event_loop() -> ResultType<()> {
         Ok(face) => Some(face),
         Err(err) => {
             log::error!("Failed to create font face: {}", err);
-            None
-        }
-    };
-    let etiket_yuzu = match altunakar_etiket_yazi_yuzu() {
-        Ok(f) => Some(f),
-        Err(err) => {
-            log::error!("Altunakar etiket yazi yuzu yok: {}", err);
             None
         }
     };
@@ -127,12 +105,11 @@ pub(super) fn create_event_loop() -> ResultType<()> {
     let mut ripples: Vec<Ripple> = Vec::new();
     let mut last_cursors: HashMap<String, Cursor> = HashMap::new();
     let mut resized = final_size.is_none();
-    // Altunakar: beyaz tahta şekilleri ve bağlıyken ekran çerçevesi (anahtar → etiket).
+    // Altunakar: beyaz tahta şekilleri.
     let mut sekiller = SekilDeposu::default();
-    let mut cerceveler: HashMap<String, String> = HashMap::new();
-    let (kok, ekranlar) = altunakar_ekranlar();
-    // Altunakar: yalnız bir şey değişince (ya da tıklama halkası canlanırken) yeniden çiz.
-    // Önceden döngü durmadan çiziyordu; çerçeve her oturumda açık olduğundan işlemciyi yorardı.
+    let kok = altunakar_kok();
+    // Altunakar: yalnız bir şey değişince (ya da tıklama halkası canlanırken) yeniden çiz;
+    // döngü durmadan çizip işlemciyi yormasın.
     let mut kirli = true;
 
     event_loop.run(move |event, _, control_flow| {
@@ -193,37 +170,6 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                 for c in sekiller.hepsi() {
                     for cizgi in ac::sekil_cizgileri(c, kok) {
                         altunakar_boya(&mut pixmap, &cizgi, c.argb, c.kalinlik);
-                    }
-                }
-                if let Some(etiket) = cerceveler.values().next() {
-                    let ekran_listesi = if ekranlar.is_empty() {
-                        vec![(0.0, 0.0, width.get() as f32, height.get() as f32)]
-                    } else {
-                        ekranlar.clone()
-                    };
-                    for cizgi in ac::cerceve_cizgileri(&ekran_listesi, ac::CERCEVE_KALINLIK) {
-                        altunakar_boya(&mut pixmap, &cizgi, ac::CERCEVE_ARGB, ac::CERCEVE_KALINLIK);
-                    }
-                    if let Some(face) = etiket_yuzu.as_ref().or(face.as_ref()) {
-                        // Mac'teki etiketle aynı: 15 nokta yazı, ekran ölçeğine göre piksel.
-                        let olcek = window.scale_factor() as f32;
-                        let boyut = 15.0 * olcek;
-                        let (r, g, b, a) = ac::argb_parcala(ac::CERCEVE_ARGB);
-                        let mut kutu = Paint::default();
-                        kutu.set_color_rgba8(b, g, r, a);
-                        kutu.anti_alias = true;
-                        for e in &ekran_listesi {
-                            let ust = e.1 + ac::CERCEVE_KALINLIK + 6.0 * olcek;
-                            altunakar_etiket_ciz(
-                                &mut pixmap,
-                                face,
-                                etiket,
-                                e.0 + e.2 / 2.0,
-                                ust,
-                                boyut,
-                                &kutu,
-                            );
-                        }
                     }
                 }
 
@@ -331,12 +277,8 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                     CustomEvent::Cizim(c) => {
                         sekiller.uygula(&k, c);
                     }
-                    CustomEvent::Cerceve(c) => {
-                        cerceveler.insert(k, c.etiket);
-                    }
                     CustomEvent::Clear => {
                         sekiller.temizle(&k);
-                        cerceveler.remove(&k);
                         last_cursors.remove(&k);
                     }
                     CustomEvent::Exit => {

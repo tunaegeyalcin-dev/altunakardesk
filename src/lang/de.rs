@@ -868,7 +868,5 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Thin", "Dünn"),
         ("Thick", "Dick"),
         ("Clear drawings", "Zeichnungen löschen"),
-        ("Show screen frame while connected", "Während einer Verbindung einen Rahmen um den Bildschirm anzeigen"),
-        ("altunakar-cerceve-bagli", "Altunakar Support verbunden"),
     ].iter().cloned().collect();
 }

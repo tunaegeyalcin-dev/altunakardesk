@@ -23,9 +23,6 @@ use tao::{
 const MAXIMUM_WINDOW_LEVEL: i64 = 2147483647;
 const CURSOR_TEXT_FONT_SIZE: f64 = 14.0;
 const CURSOR_TEXT_OFFSET: f64 = 20.0;
-const CERCEVE_YAZI_BOYUTU: f64 = 15.0;
-/// Etiket menü çubuğunun altında kalsın.
-const CERCEVE_YAZI_UST: f64 = 34.0;
 
 fn altunakar_renk(argb: u32) -> piet::Color {
     let (r, g, b, a) = ac::argb_parcala(argb);
@@ -142,8 +139,6 @@ fn draw_cursors(
     last_cursors: &HashMap<String, CursorInfo>,
     map_cursor_text: &mut HashMap<(String, u32), CoreGraphicsTextLayout>,
     sekiller: &SekilDeposu,
-    cerceveler: &HashMap<String, String>,
-    cerceve_yazilari: &mut HashMap<String, CoreGraphicsTextLayout>,
 ) {
     for window in windows.iter() {
         if window.window.id() != window_id {
@@ -179,40 +174,6 @@ fn draw_cursors(
                                     altunakar_boya(&mut context, &cizgi, c.argb, c.kalinlik);
                                 }
                             }
-                            // Altunakar: bağlıyken ekran çerçevesi ve etiketi.
-                            if let Some(etiket) = cerceveler.values().next() {
-                                let (w, h) = (
-                                    window.logical_size.width as f32,
-                                    window.logical_size.height as f32,
-                                );
-                                for cizgi in ac::cerceve_cizgileri(&[(0.0, 0.0, w, h)], ac::CERCEVE_KALINLIK) {
-                                    altunakar_boya(&mut context, &cizgi, ac::CERCEVE_ARGB, ac::CERCEVE_KALINLIK);
-                                }
-                                if !cerceve_yazilari.contains_key(etiket) {
-                                    if let Ok(layout) = context
-                                        .text()
-                                        .new_text_layout(etiket.clone())
-                                        .font(FontFamily::SYSTEM_UI, CERCEVE_YAZI_BOYUTU)
-                                        .text_color(piet::Color::WHITE)
-                                        .build()
-                                    {
-                                        cerceve_yazilari.insert(etiket.clone(), layout);
-                                    }
-                                }
-                                if let Some(layout) = cerceve_yazilari.get(etiket) {
-                                    let boyut = layout.size();
-                                    let pos = Point::new(
-                                        (window.logical_size.width - boyut.width) / 2.0,
-                                        CERCEVE_YAZI_UST,
-                                    );
-                                    let kutu = piet::kurbo::Rect::from_origin_size(pos, boyut)
-                                        .inflate(10.0, 5.0)
-                                        .to_rounded_rect(8.0);
-                                    context.fill(kutu, &altunakar_renk(ac::CERCEVE_ARGB));
-                                    context.draw_text(layout, pos);
-                                }
-                            }
-
                             if let Some(ripples) = window_ripples.get_mut(&window_id) {
                                 Ripple::retain_active(ripples);
                                 for ripple in ripples.iter() {
@@ -307,16 +268,13 @@ pub(super) fn create_event_loop() -> ResultType<()> {
     let mut window_ripples: HashMap<WindowId, Vec<Ripple>> = HashMap::new();
     let mut last_cursors: HashMap<String, CursorInfo> = HashMap::new();
     let mut map_cursor_text: HashMap<(String, u32), CoreGraphicsTextLayout> = HashMap::new();
-    // Altunakar: beyaz tahta şekilleri ve bağlıyken ekran çerçevesi (anahtar → etiket).
+    // Altunakar: beyaz tahta şekilleri.
     let mut sekiller = SekilDeposu::default();
-    let mut cerceveler: HashMap<String, String> = HashMap::new();
-    let mut cerceve_yazilari: HashMap<String, CoreGraphicsTextLayout> = HashMap::new();
 
     event_loop.run(move |event, _, control_flow| {
         // Altunakar: gösterilecek bir şey yokken bekle; varken en çok saniyede 60 kare
-        // (önceden döngü durmadan çiziyordu; çerçeve her oturumda açık).
+        // (önceden döngü durmadan çiziyordu).
         let gosterilecek = !last_cursors.is_empty()
-            || !cerceveler.is_empty()
             || !sekiller.bos_mu()
             || window_ripples.values().any(|r| !r.is_empty());
         *control_flow = if gosterilecek {
@@ -347,8 +305,6 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                     &last_cursors,
                     &mut map_cursor_text,
                     &sekiller,
-                    &cerceveler,
-                    &mut cerceve_yazilari,
                 );
             }
             Event::MainEventsCleared => {
@@ -405,12 +361,8 @@ pub(super) fn create_event_loop() -> ResultType<()> {
                 CustomEvent::Cizim(c) => {
                     sekiller.uygula(&k, c);
                 }
-                CustomEvent::Cerceve(c) => {
-                    cerceveler.insert(k, c.etiket);
-                }
                 CustomEvent::Clear => {
                     sekiller.temizle(&k);
-                    cerceveler.remove(&k);
                     last_cursors.remove(&k);
                 }
                 CustomEvent::Exit => {
