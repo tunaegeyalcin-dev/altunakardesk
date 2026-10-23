@@ -1390,17 +1390,25 @@ impl Connection {
 
     /// Altunakar: kalıcı şifreyle (gözetimsiz) açılan oturuma "Gözetimsiz erişim" profilinin izinleri
     /// uygulanır (hbb_common::altunakar_izin); profilde ayarlanmamış izin etkileşimli ayar gibi kalır.
-    /// Ekip sunucusunun cihaz izinleri (control_permissions) varsa onlar geçerlidir. Doğrulama anında
-    /// çağrılır: müşteri penceresi ve oturum hizmetleri bu değerlerle başlar, değişen izin teknisyene
-    /// bildirilir. Sonradan gelen kısıtlar (dosya aktarımı, yalnız izleme vb.) yine uygulanır.
+    /// Merkezin cihaz izinleri (control_permissions) bir izni açıkça belirliyorsa o izne
+    /// dokunulmaz; önceden izin seti geldiği anda (boş da olsa) profil hiç uygulanmıyordu. Doğrulama
+    /// anında çağrılır: müşteri penceresi ve oturum hizmetleri bu değerlerle başlar, değişen izin
+    /// teknisyene bildirilir. Sonradan gelen kısıtlar (dosya aktarımı, yalnız izleme vb.) yine uygulanır.
     async fn altunakar_izin_profili_uygula(&mut self) {
-        if self.conn_audit_primary_auth != ConnAuditPrimaryAuth::PermanentPassword
-            || self.control_permissions.is_some()
-        {
+        log::info!(
+            "Gozetimsiz profil denetimi: dogrulama {}, kontrol izinleri {}",
+            self.conn_audit_primary_auth.as_i64(),
+            self.control_permissions.is_some()
+        );
+        if self.conn_audit_primary_auth != ConnAuditPrimaryAuth::PermanentPassword {
             return;
         }
         use hbb_common::altunakar_izin as ai;
+        let merkez = self.control_permissions.clone();
         let profil = |izin: &str, temel: bool| {
+            if Self::control_permission_karari(izin, &merkez).is_some() {
+                return temel;
+            }
             ai::profil_izni(izin, &Config::get_option(&ai::anahtar(izin)), temel)
         };
         let eski = [
@@ -1441,6 +1449,9 @@ impl Connection {
         self.recording = yeni[5];
         self.block_input = yeni[6];
         self.privacy_mode = yeni[7];
+        if yeni == eski {
+            log::info!("Gozetimsiz profil: izinler degismedi");
+        }
         for i in 0..izinler.len() {
             if yeni[i] != eski[i] {
                 log::info!("Gozetimsiz profil: {:?} -> {}", izinler[i], yeni[i]);
@@ -2719,32 +2730,37 @@ impl Connection {
         enable_prefix_option: &str,
         control_permissions: &Option<ControlPermissions>,
     ) -> bool {
-        use hbb_common::rendezvous_proto::control_permissions::Permission;
-        if let Some(control_permissions) = control_permissions {
-            let permission = match enable_prefix_option {
-                keys::OPTION_ENABLE_KEYBOARD => Some(Permission::keyboard),
-                keys::OPTION_ENABLE_REMOTE_PRINTER => Some(Permission::remote_printer),
-                keys::OPTION_ENABLE_CLIPBOARD => Some(Permission::clipboard),
-                keys::OPTION_ENABLE_FILE_TRANSFER => Some(Permission::file),
-                keys::OPTION_ENABLE_AUDIO => Some(Permission::audio),
-                keys::OPTION_ENABLE_CAMERA => Some(Permission::camera),
-                keys::OPTION_ENABLE_TERMINAL => Some(Permission::terminal),
-                keys::OPTION_ENABLE_TUNNEL => Some(Permission::tunnel),
-                keys::OPTION_ENABLE_REMOTE_RESTART => Some(Permission::restart),
-                keys::OPTION_ENABLE_RECORD_SESSION => Some(Permission::recording),
-                keys::OPTION_ENABLE_BLOCK_INPUT => Some(Permission::block_input),
-                keys::OPTION_ENABLE_PRIVACY_MODE => Some(Permission::privacy_mode),
-                _ => None,
-            };
-            if let Some(permission) = permission {
-                if let Some(enabled) =
-                    crate::get_control_permission(control_permissions.permissions, permission)
-                {
-                    return enabled;
-                }
-            }
+        if let Some(enabled) =
+            Self::control_permission_karari(enable_prefix_option, control_permissions)
+        {
+            return enabled;
         }
         Self::is_permission_enabled_locally(enable_prefix_option)
+    }
+
+    /// Merkezin cihaz izinlerinin bu izin için açık kararı; karar yoksa None.
+    fn control_permission_karari(
+        enable_prefix_option: &str,
+        control_permissions: &Option<ControlPermissions>,
+    ) -> Option<bool> {
+        use hbb_common::rendezvous_proto::control_permissions::Permission;
+        let control_permissions = control_permissions.as_ref()?;
+        let permission = match enable_prefix_option {
+            keys::OPTION_ENABLE_KEYBOARD => Permission::keyboard,
+            keys::OPTION_ENABLE_REMOTE_PRINTER => Permission::remote_printer,
+            keys::OPTION_ENABLE_CLIPBOARD => Permission::clipboard,
+            keys::OPTION_ENABLE_FILE_TRANSFER => Permission::file,
+            keys::OPTION_ENABLE_AUDIO => Permission::audio,
+            keys::OPTION_ENABLE_CAMERA => Permission::camera,
+            keys::OPTION_ENABLE_TERMINAL => Permission::terminal,
+            keys::OPTION_ENABLE_TUNNEL => Permission::tunnel,
+            keys::OPTION_ENABLE_REMOTE_RESTART => Permission::restart,
+            keys::OPTION_ENABLE_RECORD_SESSION => Permission::recording,
+            keys::OPTION_ENABLE_BLOCK_INPUT => Permission::block_input,
+            keys::OPTION_ENABLE_PRIVACY_MODE => Permission::privacy_mode,
+            _ => return None,
+        };
+        crate::get_control_permission(control_permissions.permissions, permission)
     }
 
     fn update_codec_on_login(&self) {

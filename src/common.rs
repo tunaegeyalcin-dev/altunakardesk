@@ -1083,10 +1083,12 @@ pub fn altunakar_dosyayi_dogrula(dosya: &std::path::Path) -> hbb_common::ResultT
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn altunakar_sohbet_kaydi(gelen: bool, numara: &str, kim: &str, metin: &str) {
     use hbb_common::altunakar_sohbet as s;
+    // Diskten: müşteri tarafında kaydı bağlantı penceresi süreci yazar, ayar ise ana pencerede
+    // değişir; bellekteki kopya bağlantı boyunca eski kalıyordu.
     let acik = if gelen {
-        s::gelen_acik(&LocalConfig::get_option(s::SECENEK_GELEN))
+        s::gelen_acik(&LocalConfig::get_option_diskten(s::SECENEK_GELEN))
     } else {
-        s::giden_acik(&LocalConfig::get_option(s::SECENEK_GIDEN))
+        s::giden_acik(&LocalConfig::get_option_diskten(s::SECENEK_GIDEN))
     };
     if acik {
         s::kaydet(numara, kim, metin);
