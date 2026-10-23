@@ -101,6 +101,7 @@ class _ViewCameraPageState extends State<ViewCameraPage>
   void initState() {
     super.initState();
     _ffi = FFI(widget.sessionId);
+    _ffi.altunakarUstCubuk = _sabitCubukBoslugu;
     Get.put<FFI>(_ffi, tag: widget.id);
     _ffi.imageModel.addCallbackOnFirstImage((String peerId) {
       showKBLayoutTypeChooserIfNeeded(
@@ -252,6 +253,9 @@ class _ViewCameraPageState extends State<ViewCameraPage>
         ),
       );
 
+  double _sabitCubukBoslugu() =>
+      widget.toolbarState.sabitBosluk(goreceliFare: false);
+
   Widget buildBody(BuildContext context) {
     remoteToolbar(BuildContext context) => RemoteToolbar(
           id: widget.id,
@@ -273,12 +277,17 @@ class _ViewCameraPageState extends State<ViewCameraPage>
         );
 
     bodyWidget() {
+      final canvas = Container(
+        color: kColorCanvas,
+        child: getBodyForDesktop(context),
+      );
       return Stack(
         children: [
-          Container(
-            color: kColorCanvas,
-            child: getBodyForDesktop(context),
-          ),
+          // Altunakar: sabit üst çubuk görünürken görüntü çubuğun altından başlar.
+          Obx(() => Padding(
+                padding: EdgeInsets.only(top: _sabitCubukBoslugu()),
+                child: canvas,
+              )),
           Stack(
             children: [
               _ffi.ffiModel.pi.isSet.isTrue &&
