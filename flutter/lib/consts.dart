@@ -8,6 +8,9 @@ const int kMaxVirtualDisplayCount = 4;
 const int kAllVirtualDisplay = -1;
 
 const double kDesktopRemoteTabBarHeight = 28.0;
+/// Altunakar: uzak penceredeki sabit üst araç çubuğunun yüksekliği (düğme 32 +
+/// dikey boşluk 2×6 + alt çizgi 1).
+const double kAltunakarSabitCubuk = 45.0;
 const int kInvalidWindowId = -1;
 const int kMainWindowId = 0;
 

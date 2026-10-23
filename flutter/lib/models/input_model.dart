@@ -1964,7 +1964,7 @@ class InputModel {
       }
     }
 
-    y -= CanvasModel.topToEdge;
+    y -= CanvasModel.topToEdge + (parent.target?.altunakarUstCubuk() ?? 0);
     x -= CanvasModel.leftToEdge;
     if (isMove) {
       final canvasModel = parent.target!.canvasModel;

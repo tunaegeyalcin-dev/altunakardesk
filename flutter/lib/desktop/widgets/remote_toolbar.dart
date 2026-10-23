@@ -250,24 +250,24 @@ class ToolbarState {
   final RxBool initialized = false.obs;
   bool _isInitializing = false;
 
-  ToolbarState() {
-    _pin = RxBool(false);
-    final s = bind.getLocalFlutterOption(k: kOptionRemoteMenubarState);
-    if (s.isEmpty) {
-      return;
-    }
+  // Altunakar: iğne = sabit üst çubuk (AnyDesk gibi): pencerenin üstünde tam
+  // genişlikte, her zaman görünür; uzak görüntü çubuğun altından başlar.
+  // Varsayılan açık. İğne kaldırılınca yukarı akışın kayan, kendiliğinden
+  // gizlenen çubuğu gelir. Eski kOptionRemoteMenubarState kaydı okunmaz.
+  static const _kSabitCubuk = 'altunakar_sabit_cubuk';
 
-    try {
-      final m = jsonDecode(s);
-      if (m != null) {
-        _pin = RxBool(m['pin'] ?? false);
-      }
-    } catch (e) {
-      debugPrint('Failed to decode toolbar state ${e.toString()}');
-    }
+  ToolbarState() {
+    _pin = RxBool(bind.getLocalFlutterOption(k: _kSabitCubuk) != 'N');
   }
 
   bool get pin => _pin.value;
+  RxBool get pinRx => _pin;
+
+  /// Sabit çubuk görünürken uzak görüntünün üstte bırakacağı boşluk.
+  double sabitBosluk({required bool goreceliFare}) =>
+      _pin.value && initialized.value && !hide.value && !goreceliFare
+          ? kAltunakarSabitCubuk
+          : 0;
 
   /// Initialize all toolbar states from session options.
   /// This should be called once when the toolbar is first created.
@@ -319,8 +319,7 @@ class ToolbarState {
   }
 
   _savePin() async {
-    bind.setLocalFlutterOption(
-        k: kOptionRemoteMenubarState, v: jsonEncode({'pin': _pin.value}));
+    bind.setLocalFlutterOption(k: _kSabitCubuk, v: _pin.value ? 'Y' : 'N');
   }
 }
 
@@ -685,6 +684,16 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      // Altunakar: sabit üst çubuk; konum, sürükleme ve gizlenme yok.
+      if (widget.state.pinRx.value) {
+        if (!widget.state.initialized.value || hide.value) {
+          return const SizedBox.shrink();
+        }
+        return Align(
+          alignment: Alignment.topCenter,
+          child: _buildSabitCubuk(context),
+        );
+      }
       // Wait for initialization to complete to prevent flickering
       if (!widget.state.initialized.value ||
           !_dockingOptionsInitialized.value) {
@@ -800,8 +809,42 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     });
   }
 
-  Widget _buildToolbar(
-      BuildContext context, _ToolbarEdge edge, bool isHorizontal) {
+  /// Altunakar: AnyDesk'teki gibi pencere genişliğinde sabit çubuk. Uzak sayfa
+  /// görüntüyü [kAltunakarSabitCubuk] kadar aşağıdan başlatır; çubuk ekranı örtmez.
+  Widget _buildSabitCubuk(BuildContext context) {
+    return Container(
+      height: kAltunakarSabitCubuk,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .menuBarTheme
+            .style
+            ?.backgroundColor
+            ?.resolve(MaterialState.values.toSet()),
+        border: Border(
+          bottom: BorderSide(color: _ToolbarTheme.borderColor(context)),
+        ),
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Theme(
+            data: themeData(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(width: _ToolbarTheme.buttonHMargin * 2),
+                ..._toolbarItems(_ToolbarEdge.top),
+                SizedBox(width: _ToolbarTheme.buttonHMargin * 2),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _toolbarItems(_ToolbarEdge edge) {
     final List<Widget> toolbarItems = [];
     toolbarItems.add(_PinMenu(state: widget.state));
     toolbarItems.add(Obx(() {
@@ -856,6 +899,12 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
+    return toolbarItems;
+  }
+
+  Widget _buildToolbar(
+      BuildContext context, _ToolbarEdge edge, bool isHorizontal) {
+    final toolbarItems = _toolbarItems(edge);
     final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
     // innerAxis: how the toolbar icons themselves flow.
     // outerAxis: how the toolbar block and the handle stack against each other
@@ -1528,6 +1577,8 @@ class ScreenAdjustor {
         horizontalEdges = CanvasModel.leftToEdge + CanvasModel.rightToEdge;
         verticalEdges = CanvasModel.topToEdge + CanvasModel.bottomToEdge;
       }
+      // Altunakar: sabit üst çubuk da pencerenin yüksekliğine eklenir.
+      verticalEdges += ffi.altunakarUstCubuk();
       final width = (canvasModel.getDisplayWidth() * canvasModel.scale +
                   horizontalEdges) *
               scale +

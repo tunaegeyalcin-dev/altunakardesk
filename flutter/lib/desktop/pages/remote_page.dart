@@ -149,6 +149,7 @@ class _RemotePageState extends State<RemotePage>
   void initState() {
     super.initState();
     _ffi = FFI(widget.sessionId);
+    _ffi.altunakarUstCubuk = _sabitCubukBoslugu;
     if (isMacOS) {
       // SchedulerBinding.instance.lifecycleState is null in the first connection in a new window.
       _macOSLifecycleState = SchedulerBinding.instance.lifecycleState;
@@ -698,6 +699,9 @@ class _RemotePageState extends State<RemotePage>
         ),
       );
 
+  double _sabitCubukBoslugu() => widget.toolbarState
+      .sabitBosluk(goreceliFare: _ffi.inputModel.relativeMouseMode.value);
+
   Widget buildBody(BuildContext context) {
     remoteToolbar(BuildContext context) => RemoteToolbar(
           id: widget.id,
@@ -719,11 +723,9 @@ class _RemotePageState extends State<RemotePage>
         );
 
     bodyWidget() {
-      return Stack(
-        children: [
-          Container(
-              color: kColorCanvas,
-              child: RawKeyFocusScope(
+      final canvas = Container(
+          color: kColorCanvas,
+          child: RawKeyFocusScope(
                   focusNode: _rawKeyFocusNode,
                   onFocusChange: (bool imageFocused) {
                     debugPrint(
@@ -746,7 +748,14 @@ class _RemotePageState extends State<RemotePage>
                     }
                   },
                   inputModel: _ffi.inputModel,
-                  child: getBodyForDesktop(context))),
+                  child: getBodyForDesktop(context)));
+      return Stack(
+        children: [
+          // Altunakar: sabit üst çubuk görünürken uzak görüntü çubuğun altından başlar.
+          Obx(() => Padding(
+                padding: EdgeInsets.only(top: _sabitCubukBoslugu()),
+                child: canvas,
+              )),
           Stack(
             children: [
               _ffi.ffiModel.pi.isSet.isTrue &&

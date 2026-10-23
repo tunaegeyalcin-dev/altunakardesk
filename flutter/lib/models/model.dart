@@ -2334,7 +2334,10 @@ class CanvasModel with ChangeNotifier {
     final size = mediaData.size;
     // If minimized, w or h may be negative here.
     double w = size.width - leftToEdge - rightToEdge;
-    double h = size.height - topToEdge - bottomToEdge;
+    double h = size.height -
+        topToEdge -
+        bottomToEdge -
+        (parent.target?.altunakarUstCubuk() ?? 0);
     if (isMobile) {
       // Account for horizontal safe area insets on both orientations.
       w = w - mediaData.padding.left - mediaData.padding.right;
@@ -4051,6 +4054,10 @@ class FFI {
   late final Peers recentPeersModel; // global
   late final Peers favoritePeersModel; // global
   late final Peers lanPeersModel; // global
+
+  /// Altunakar: sabit üst araç çubuğunun uzak görüntüden aldığı yükseklik;
+  /// uzak sayfa bağlar, çubuk yoksa 0.
+  double Function() altunakarUstCubuk = () => 0;
 
   // Terminal model registry for multiple terminals
   final Map<int, TerminalModel> _terminalModels = {};
