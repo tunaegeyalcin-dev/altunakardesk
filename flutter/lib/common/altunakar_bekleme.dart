@@ -81,8 +81,11 @@ void altunakarBeklemeKapisi(VoidCallback devam) {
                   ? const Offstage()
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(10),
+                      // Tanıtım dikey (9:16): yüksekliği sınırla, enine sığdır.
                       child: Image.file(s.data!,
-                          width: 420, fit: BoxFit.cover, gaplessPlayback: true),
+                          height: 340,
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true),
                     ).marginOnly(bottom: 12),
             ),
             Text(translate('altunakar-bekleme-aciklama'),
